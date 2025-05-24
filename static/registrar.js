@@ -24,7 +24,7 @@ function removeAllModals() {
 // Fetch all submitted subjects
 async function fetchData() {
   try {
-    const response = await fetch('http://192.168.100.87:3000/get_submitted_subjects');
+    const response = await fetch('http://0.0.0.0:3000/get_submitted_subjects');
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
     professorSubjects = data.reduce((acc, item) => {
@@ -215,7 +215,7 @@ async function approveAllSubjects(professorId) {
   if (!confirmation) return;
 
   try {
-    const response = await fetch('http://192.168.100.87:3000/approve_all_subjects', {
+    const response = await fetch('http://0.0.0.0:3000/approve_all_subjects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -274,7 +274,7 @@ async function denySubject(item, professorId) {
     const comment = prompt("Provide reason for denial:");
     if (!comment) throw new Error("Comment is required");
 
-    const res = await fetch("http://192.168.100.87:3000/deny_subject", {
+    const res = await fetch("http://0.0.0.0:3000/deny_subject", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...item, comment, status: "Denied" })
@@ -344,7 +344,7 @@ function closeDeniedModal() {
 // Fetch notifications and display
 async function fetchNotifications() {
   try {
-    const res = await fetch('http://192.168.100.87:3000/get_notifications');
+    const res = await fetch('http://0.0.0.0:3000/get_notifications');
     if (!res.ok) throw new Error('Network');
     const list = await res.json();
     displayApprovedSubjects(list);
@@ -381,7 +381,7 @@ function displayApprovedSubjects(notificationList) {
 // Fetch denied subjects
 async function fetchDeniedSubjects() {
   try {
-    const res = await fetch('http://192.168.100.87:3000/get_denied_subjects');
+    const res = await fetch('http://0.0.0.0:3000/get_denied_subjects');
     if (!res.ok) throw new Error('Network');
     deniedSubjects = await res.json();
   } catch (err) {

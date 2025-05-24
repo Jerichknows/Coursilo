@@ -155,7 +155,7 @@ const batchManager = {
     const batch = state.submittedBatches[batchIndex];
 
     try {
-      const response = await utils.fetchData('http://192.168.100.87:3000/submit_subjects', {
+      const response = await utils.fetchData('http://0.0.0.0:3000/submit_subjects', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
