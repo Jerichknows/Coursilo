@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Finance Processing Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              DEFAULT: '#0A1629',
+              50: '#F5F7FA'
+            },
+            action: {
+              DEFAULT: '#4B76F6',
+              hover: '#3961E3'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <!-- Swiper CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+  <style>
+  body.modal-open {
+    overflow: hidden;
+  }
+  .swiper {
+    width: 100%;
+    height: 100%;
+    padding: 30px;
+    z-index: 1;
+  }
+
+  .swiper-slide {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: auto;
+  }
+
+  .swiper-pagination {
+    bottom: 10px;
+  }
+
+  .swiper-button-next, .swiper-button-prev {
+    color: #4B76F6;
+    top: 40%;
+  }
+
+  .swiper-pagination-bullet-active {
+    background-color: #4B76F6;
+  }
+
+  #createModal, #editModal {
+  z-index: 50; /* Higher than other elements */
+}
+/* Add this to your existing styles */
+#createModal, #editModal {
+  z-index: 50;
+}
+
+.mySwiper {
+  z-index: 1;
+  position: relative;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+   <!-- HEADER -->
+   <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+      <!-- Title -->
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-white">Finance Dashboard</h1>
+      </div>
+      <div class="mb-6">
+        <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-2 rounded-md flex items-center gap-2">
+          <i data-lucide="plus"></i>
+          Create New Payment Scheme
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+
+    <!-- Pending Approval Container -->
+    <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+      <div class="p-6">
+        <div class="mb-6 flex items-center gap-3">
+          <i data-lucide="clock" class="h-6 w-6 text-yellow-500"></i>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Pending Payment Assignment</h2>
+            <p class="text-sm text-gray-500">
+              Assign payment scheme to approved subjects.
+            </p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-gray-700">
+            <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="p-3 font-medium">Professor ID</th>
+                    <th class="p-3 font-medium">Subject Count</th>
+                    <th class="p-3 font-medium">Status</th>
+                    <th class="p-3 font-medium text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="financeTableBody">
+                <tr id="noFinanceRow">
+                    <td colspan="4" class="py-8 text-center text-gray-500">
+                        No approved subject offerings to process.
+                    </td>
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approved Subjects Container -->
+    <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+      <div class="p-6">
+        <div class="mb-6 flex items-center gap-3">
+          <i data-lucide="check-circle" class="h-6 w-6 text-green-500"></i>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Processed Payments</h2>
+            <p class="text-sm text-gray-500">
+              Subjects that have been assigned payment schemes.
+            </p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-gray-700">
+            <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="p-3 font-medium">Professor ID</th>
+                    <th class="p-3 font-medium">Subject Count</th>
+                    <th class="p-3 font-medium">Status</th>
+                    <th class="p-3 font-medium text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="approvedTableBody">
+                <tr id="noApprovedRow">
+                    <td colspan="4" class="py-8 text-center text-gray-500">
+                        No subjects have been processed yet.
+                    </td>
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Schemes List -->
+    <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+      <div class="p-4 border-b flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-5 h-5 text-gray-700"></i>
+        <h2 class="text-lg font-semibold text-gray-800">Existing Payment Schemes</h2>
+      </div>
+      <div class="swiper mySwiper">
+        <div id="schemes-container" class="swiper-wrapper">
+          <!-- Schemes will be loaded here -->
+          <div class="swiper-slide p-4 text-center text-gray-500">Loading payment schemes...</div>
+        </div>
+        <div class="swiper-pagination"></div>
+      </div>
+    </div>
+
+  <!-- Create Scheme Modal -->
+  <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Create New Payment Scheme</h3>
+          <button onclick="closeCreateModal()" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <form id="schemeForm" class="space-y-4">
+          <!-- Scheme Name -->
+          <div>
+            <label for="payment_name" class="block text-sm font-medium text-gray-700">Payment Scheme Name</label>
+            <input type="text" id="payment_name" name="payment_name" required
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+
+          <!-- Regular Fees -->
+          <div class="border rounded-md p-4">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-medium text-gray-700">Registration Fees</label>
+              <span class="text-sm text-gray-500">Total: ₱<span id="regular-total">0</span></span>
+            </div>
+            <div id="regular-fees-container" class="space-y-3">
+              <div class="flex items-center gap-3">
+                <input type="text" name="regular_fees[]" placeholder="Fee description"
+                       class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                <input type="number" name="regular_amounts[]" placeholder="Amount"
+                       class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                       oninput="calculateRegularTotal()">
+                <button type="button" onclick="removeFeeItem(this)" class="text-red-500 hover:text-red-700">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </div>
+            <button type="button" onclick="addRegularFee()" class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add Registration Fee
+            </button>
+          </div>
+
+          <!-- Miscellaneous Fees -->
+          <div class="border rounded-md p-4">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-medium text-gray-700">Miscellaneous Fees</label>
+              <span class="text-sm text-gray-500">Total: ₱<span id="misc-total">0</span></span>
+            </div>
+            <div id="misc-fees-container" class="space-y-3">
+              <div class="flex items-center gap-3">
+                <input type="text" name="misc_fees[]" placeholder="Fee description"
+                       class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                <input type="number" name="misc_amounts[]" placeholder="Amount"
+                       class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                       oninput="calculateMiscTotal()">
+                <button type="button" onclick="removeFeeItem(this)" class="text-red-500 hover:text-red-700">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </div>
+            <button type="button" onclick="addMiscFee()" class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add Miscellaneous Fee
+            </button>
+          </div>
+
+          <!-- Laboratory Fees -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="com_lab_fee" class="block text-sm font-medium text-gray-700">Computer Lab Fee (per unit)</label>
+              <input type="number" id="com_lab_fee" name="com_lab_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="laboratory_fee" class="block text-sm font-medium text-gray-700">Laboratory Fee (per unit)</label>
+              <input type="number" id="laboratory_fee" name="laboratory_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+          </div>
+
+          <!-- RLE Fees -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="school_lecture_fee" class="block text-sm font-medium text-gray-700">School Lecture Fee (per unit)</label>
+              <input type="number" id="school_lecture_fee" name="school_lecture_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="clinic_fee" class="block text-sm font-medium text-gray-700">Clinic Fee (per unit)</label>
+              <input type="number" id="clinic_fee" name="clinic_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+          </div>
+
+          <!-- Other Fees -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="aff_fee" class="block text-sm font-medium text-gray-700">Affiliation Fee</label>
+              <input type="number" id="aff_fee" name="aff_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="tuition_fee" class="block text-sm font-medium text-gray-700">Tuition Rate per Unit</label>
+              <input type="number" id="tuition_fee" name="tuition_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="tuition_fee" class="block text-sm font-medium text-gray-700">NSTP Rate per Unit</label>
+              <input type="number" id="unit_fee" name="tuition_fee"
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="flex justify-end gap-3 pt-4">
+            <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700">
+              Save Payment Scheme
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <!-- Edit Scheme Modal -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Edit Payment Scheme</h3>
+        <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="editSchemeForm" class="space-y-4">
+        <input type="hidden" id="edit_scheme_id" name="id">
+
+        <!-- Scheme Name -->
+        <div>
+          <label for="edit_payment_name" class="block text-sm font-medium text-gray-700">Payment Scheme Name</label>
+          <input type="text" id="edit_payment_name" name="payment_name" required
+                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        </div>
+
+        <!-- Regular Fees -->
+        <div class="border rounded-md p-4">
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-medium text-gray-700">Registration Fees</label>
+            <span class="text-sm text-gray-500">Total: ₱<span id="edit-regular-total">0</span></span>
+          </div>
+          <div id="edit-regular-fees-container" class="space-y-3">
+            <!-- Regular fees will be added here -->
+          </div>
+          <button type="button" onclick="addEditRegularFee()" class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Registration Fee
+          </button>
+        </div>
+
+        <!-- Miscellaneous Fees -->
+        <div class="border rounded-md p-4">
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-medium text-gray-700">Miscellaneous Fees</label>
+            <span class="text-sm text-gray-500">Total: ₱<span id="edit-misc-total">0</span></span>
+          </div>
+          <div id="edit-misc-fees-container" class="space-y-3">
+            <!-- Misc fees will be added here -->
+          </div>
+          <button type="button" onclick="addEditMiscFee()" class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Miscellaneous Fee
+          </button>
+        </div>
+
+        <!-- Laboratory Fees -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="edit_com_lab_fee" class="block text-sm font-medium text-gray-700">Computer Lab Fee (per unit)</label>
+            <input type="number" id="edit_com_lab_fee" name="com_lab_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit_laboratory_fee" class="block text-sm font-medium text-gray-700">Laboratory Fee (per unit)</label>
+            <input type="number" id="edit_laboratory_fee" name="laboratory_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+        </div>
+
+        <!-- RLE Fees -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="edit_school_lecture_fee" class="block text-sm font-medium text-gray-700">School Lecture Fee (per unit)</label>
+            <input type="number" id="edit_school_lecture_fee" name="school_lecture_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit_clinic_fee" class="block text-sm font-medium text-gray-700">Clinic Fee (per unit)</label>
+            <input type="number" id="edit_clinic_fee" name="clinic_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+        </div>
+
+        <!-- Other Fees -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label for="edit_aff_fee" class="block text-sm font-medium text-gray-700">Affiliation Fee</label>
+            <input type="number" id="edit_aff_fee" name="aff_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit_tuition_fee" class="block text-sm font-medium text-gray-700">Tuition Rate per Unit</label>
+            <input type="number" id="edit_tuition_fee" name="tuition_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit_tuition_fee" class="block text-sm font-medium text-gray-700">NSTP Rate per Unit</label>
+            <input type="number" id="edit_unit_fee" name="tuition_fee"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3 pt-4">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700">
+            Update Payment Scheme
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+  </main>
+<script src="{{ url_for('static', filename='finance.js') }}"></script>
+<script src="{{ url_for('static', filename='assignpayment.js') }}"></script>
+<script src="{{ url_for('static', filename='paymentscheme.js') }}"></script>
+<script src="{{ url_for('static', filename='assignedpayment.js') }}"></script>
+</body>
+</html>

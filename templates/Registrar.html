@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registrar Verification Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              DEFAULT: '#0A1629',
+              50: '#F5F7FA'
+            },
+            action: {
+              DEFAULT: '#4B76F6',
+              hover: '#3961E3'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-white">Registrar Verification</h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+    <div class="flex flex-col gap-10">
+      <!-- Submitted Subject Offerings Section -->
+      <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="mb-6 flex items-center gap-3">
+            <i data-lucide="check-square" class="h-6 w-6 text-action"></i>
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Submitted Subject Offerings</h2>
+              <p class="text-sm text-gray-500">
+                Review submitted offerings. Click on the professor name for details.
+              </p>
+            </div>
+          </div>
+          <a href="{{ url_for('finance') }}">
+              <button class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium transition-colors">
+                  Go to finance
+              </button>
+          </a>
+          <div class="overflow-x-auto mt-4">
+            <table class="w-full text-left text-sm text-gray-700">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                  <th class="p-3 font-medium">Department</th>
+                  <th class="p-3 font-medium">Professor Name</th>
+                  <th class="p-3 font-medium">Year</th>
+                  <th class="p-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subjectOfferingsTable">
+                  <tr id="noOfferingsRow">
+                      <td colspan="6" class="py-8 text-center text-gray-500">
+                          No subject offerings to review.
+                      </td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved/Denied Subjects Section -->
+      <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="mb-6 flex items-center gap-3">
+            <i data-lucide="list-checks" class="h-6 w-6 text-action"></i>
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Approval Status</h2>
+              <p class="text-sm text-gray-500">
+                View the status of all submitted subjects.
+              </p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-700">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                  <th class="p-3 font-medium">Subject Code</th>
+                  <th class="p-3 font-medium">Subject Name</th>
+                  <th class="p-3 font-medium">Department</th>
+                  <th class="p-3 text-right font-medium">Year</th>
+                  <th class="p-3 text-right font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody id="DisplayMessageStatus">
+                <tr>
+                  <td colspan="9" class="py-8 text-center text-gray-500">
+                    No subjects submitted yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="{{ url_for('static', filename='registrar.js') }}"></script>
+</body>
+</html>

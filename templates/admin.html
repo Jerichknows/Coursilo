@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { DEFAULT: '#0A1629', 50: '#F5F7FA' },
+            action: { DEFAULT: '#4B76F6', hover: '#3961E3' }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+
+  <!-- Swiper CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+  <style>
+    .swiper-button-next, .swiper-button-prev {
+      color: #4B76F6;
+    }
+    .swiper-pagination-bullet-active {
+      background-color: #4B76F6;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+      <h1 class="text-xl font-bold text-white">Admin Dashboard</h1>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+    <!-- Add Subject Form -->
+    <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+      <div class="p-6">
+        <div class="mb-4 flex items-center gap-3">
+          <i data-lucide="book-open" class="h-6 w-6 text-action"></i>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Add Subject</h2>
+            <p class="text-sm text-gray-500">Add a new subject to the system</p>
+          </div>
+        </div>
+        <form id="subjectForm">
+          <label class="block text-sm font-medium text-gray-700">Subject Code:</label>
+          <input type="text" id="subject_code" required class="input-field">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Subject Name:</label>
+          <input type="text" id="subject_name" required class="input-field">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Year Level:</label>
+          <select id="year_level" required class="input-field">
+            <option value="">Select a Year</option>
+            <option value="1st year">1st year</option>
+            <option value="2nd year">2nd year</option>
+            <option value="3rd year">3rd year</option>
+            <option value="4th year">4th year</option>
+          </select>
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Department:</label>
+          <select id="department" required class="input-field">
+            <option value="">Select a Department</option>
+            <option value="BSIT">BSIT</option>
+            <option value="BSCS">BSCS</option>
+            <option value="BSHM">BSHM</option>
+          </select>
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Lecture:</label>
+          <input type="number" id="lecture" class="input-field" value="0">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Computer Laboratory:</label>
+          <input type="number" id="com_lab" class="input-field" value="0">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Laboratory:</label>
+          <input type="number" id="laboratory" class="input-field" value="0">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">School Lecture:</label>
+          <input type="number" id="school_lecture" class="input-field" value="0">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Clinic:</label>
+          <input type="number" id="clinic" class="input-field" value="0">
+
+          <label class="block text-sm font-medium text-gray-700 mt-4">Subject Type:</label>
+          <select id="subject_type" required class="input-field">
+            <option value="">Select a Subject type</option>
+            <option value="Major/Professional Subject">Major/Professional Subject </option>
+            <option value="Minor/General Subject">Minor/General Subject</option>
+          </select>
+
+          <div class="mt-4 flex items-center hidden" id="nstpContainer">
+            <input type="checkbox" id="is_nstp" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <label for="is_nstp" class="ml-2 text-sm font-medium text-gray-700">Is this an NSTP subject?</label>
+          </div>
+
+          <button type="submit" class="mt-4 bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition">Add Subject</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Swiper Container for Department Tables -->
+    <div class="swiper mySwiper">
+      <div class="swiper-wrapper" id="departmentTablesContainer"></div>
+      <div class="swiper-pagination"></div>
+    </div>
+  </main>
+
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>
