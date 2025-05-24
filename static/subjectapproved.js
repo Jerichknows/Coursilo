@@ -5,7 +5,7 @@
 const subjectApproval = {
   async fetchApprovedSubjects() {
     try {
-      const approvedSubjects = await utils.fetchData('http://0.0.0.0:3000/get_notifications_dean');
+      const approvedSubjects = await utils.fetchData('/get_notifications_dean');
       this.displayApprovedSubjects(approvedSubjects);
     } catch (error) {
       console.error('Error fetching approved subjects:', error);
@@ -45,7 +45,7 @@ const subjectApproval = {
 
   async fetchDeniedSubjects() {
     try {
-      const deniedSubjects = await utils.fetchData('http://0.0.0.0:3000/get_denied_subjects');
+      const deniedSubjects = await utils.fetchData('/get_denied_subjects');
       state.deniedSubjects = deniedSubjects;
       this.displayDeniedSubjects(deniedSubjects);
     } catch (error) {
