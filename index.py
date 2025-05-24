@@ -3,23 +3,17 @@ from models import db, Subject, SubmittedSubject, Notification, PaymentScheme
 from flask_sqlalchemy import SQLAlchemy
 from collections import defaultdict
 from sqlalchemy import or_
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///MainDatabase.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
-app.secret_key = os.getenv('SECRET_KEY', 'your-default-secret-key')
+# Configure the database URI (using SQLite)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///MainDatabase.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = "6iwFfSCUT6eoaNCLo01v7V+kq32h3ohSkAfZdFjy3TM="
 
 # Initialize database with the app
 db.init_app(app)
 
 saved_batches = {}
-
-approved_subject_list = []
 
 @app.route('/')
 def index():
@@ -44,6 +38,8 @@ def add_subject():
     db.session.add(new_subject)
     db.session.commit()
     return jsonify({"message": "Subject added successfully"})
+
+approved_subject_list = []
 
 
 @app.route('/registrar', methods=['GET', 'POST'])
@@ -920,9 +916,6 @@ def delete_payment_scheme(scheme_id):
 
 
 if __name__ == '__main__':
-    # Create database tables
     with app.app_context():
-        db.create_all()
-
-    # Run the application
-    app.run(debug=os.getenv('DEBUG', 'False') == 'True')
+        db.create_all()  # Ensure all database tables are created
+    app.run(debug=True)
