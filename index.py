@@ -3,6 +3,8 @@ from models import db, Subject, SubmittedSubject, Notification, PaymentScheme
 from flask_sqlalchemy import SQLAlchemy
 from collections import defaultdict
 from sqlalchemy import or_
+import os
+
 app = Flask(__name__)
 
 # Configure the database URI (using SQLite)
@@ -915,7 +917,8 @@ def delete_payment_scheme(scheme_id):
         return jsonify({'error': str(e)}), 500
 
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Ensure all database tables are created
-    app.run(debug=True)
+with app.app_context():
+    db.create_all()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
