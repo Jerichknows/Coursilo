@@ -4,21 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Registrar Verification Dashboard</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            navy: {
-              DEFAULT: '#0A1629',
-              50: '#F5F7FA'
-            },
-            action: {
-              DEFAULT: '#4B76F6',
-              hover: '#3961E3'
-            }
+            navy: { DEFAULT: '#0A1629', 50: '#F5F7FA' },
+            action: { DEFAULT: '#4B76F6', hover: '#3961E3' }
           }
         }
       }
@@ -27,85 +20,151 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
-  <!-- HEADER -->
+  <!-- Header -->
   <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-      <div class="flex items-center gap-4">
-        <h1 class="text-xl font-bold text-white">Registrar Verification</h1>
-      </div>
+      <h1 class="text-xl font-bold text-white">Registrar Verification</h1>
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
+  <!-- Main -->
   <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
     <div class="flex flex-col gap-10">
-      <!-- Submitted Subject Offerings Section -->
+      <!-- Submitted Offerings -->
       <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div class="p-6">
           <div class="mb-6 flex items-center gap-3">
             <i data-lucide="check-square" class="h-6 w-6 text-action"></i>
             <div>
               <h2 class="text-lg font-semibold text-gray-900">Submitted Subject Offerings</h2>
-              <p class="text-sm text-gray-500">
-                Review submitted offerings. Click on the professor name for details.
-              </p>
+              <p class="text-sm text-gray-500">Review submitted offerings. Click on the professor name for details.</p>
             </div>
           </div>
           <a href="{{ url_for('finance') }}">
-              <button class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium transition-colors">
-                  Go to finance
-              </button>
+            <button class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium transition-colors">
+              Go to finance
+            </button>
           </a>
           <div class="overflow-x-auto mt-4">
             <table class="w-full text-left text-sm text-gray-700">
               <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
                   <th class="p-3 font-medium">Department</th>
-                  <th class="p-3 font-medium">Professor Name</th>
+                  <th class="p-3 font-medium">Programs</th>
+                  <th class="p-3 font-medium">Submitted by</th>
                   <th class="p-3 font-medium">Year</th>
                   <th class="p-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody id="subjectOfferingsTable">
-                  <tr id="noOfferingsRow">
-                      <td colspan="6" class="py-8 text-center text-gray-500">
-                          No subject offerings to review.
-                      </td>
-                  </tr>
+                <tr id="noOfferingsRow">
+                  <td colspan="5" class="py-8 text-center text-gray-500">No subject offerings to review.</td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- Approved/Denied Subjects Section -->
+      <!-- Batch Details Modal -->
+      <div id="batchModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white w-full max-w-3xl rounded-lg shadow-lg overflow-hidden flex flex-col">
+          <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h3 id="modalTitle" class="text-lg font-semibold text-gray-800">Subjects</h3>
+            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-800">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+          <div class="p-4 overflow-x-auto flex-1">
+            <table class="w-full text-sm text-gray-700">
+              <thead>
+                <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                  <th class="p-3 font-medium border" colspan="4"></th>
+                  <th class="p-3 text-center font-medium border" colspan="2">LAB</th>
+                  <th class="p-3 text-center font-medium border" colspan="2">RLE</th>
+                  <th class="p-3 font-medium border" colspan="1"></th>
+                </tr>
+                <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                  <th class="p-3 font-medium border">Subject Code</th>
+                  <th class="p-3 font-medium border">Subject Name</th>
+                  <th class="p-3 text-center font-medium border">Total Units</th>
+                  <th class="p-3 text-center font-medium border">Lecture</th>
+                  <th class="p-3 text-center font-medium border">Comp Lab</th>
+                  <th class="p-3 text-center font-medium border">Lab</th>
+                  <th class="p-3 text-center font-medium border">CL</th>
+                  <th class="p-3 text-center font-medium border">C</th>
+                  <th class="p-3 text-center font-medium border">Type</th>
+                </tr>
+              </thead>
+              <tbody id="modalBody"></tbody>
+            </table>
+          </div>
+          <div id="denyCommentSection" class="hidden px-6 pb-4">
+            <label for="denyComment" class="block text-sm font-medium text-gray-700 mb-1">Reason for denial:</label>
+            <textarea id="denyComment" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-action focus:border-action sm:text-sm"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 p-4 border-t">
+            <button onclick="showDenyCommentSection()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">Deny</button>
+            <button onclick="approveBatch(currentBatchId)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">Approve</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved Status -->
       <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div class="p-6">
           <div class="mb-6 flex items-center gap-3">
-            <i data-lucide="list-checks" class="h-6 w-6 text-action"></i>
+            <i data-lucide="thumbs-up" class="h-6 w-6 text-green-600"></i>
             <div>
-              <h2 class="text-lg font-semibold text-gray-900">Approval Status</h2>
-              <p class="text-sm text-gray-500">
-                View the status of all submitted subjects.
-              </p>
+              <h2 class="text-lg font-semibold text-gray-900">Approved Subject Offerings</h2>
+              <p class="text-sm text-gray-500">View all approved subject offerings.</p>
             </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-gray-700">
               <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                  <th class="p-3 font-medium">Subject Code</th>
-                  <th class="p-3 font-medium">Subject Name</th>
                   <th class="p-3 font-medium">Department</th>
-                  <th class="p-3 text-right font-medium">Year</th>
-                  <th class="p-3 text-right font-medium">Status</th>
+                  <th class="p-3 font-medium">Programs</th>
+                  <th class="p-3 font-medium">Submitted by</th>
+                  <th class="p-3 font-medium">Year</th>
+                  <th class="p-3 font-medium">Approved</th>
                 </tr>
               </thead>
-              <tbody id="DisplayMessageStatus">
+              <tbody id="approvedStatusTable">
                 <tr>
-                  <td colspan="9" class="py-8 text-center text-gray-500">
-                    No subjects submitted yet.
-                  </td>
+                  <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Denied Status -->
+      <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="mb-6 flex items-center gap-3">
+            <i data-lucide="thumbs-down" class="h-6 w-6 text-red-600"></i>
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Denied Subject Offerings</h2>
+              <p class="text-sm text-gray-500">View all denied subject offerings with reasons.</p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-700">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                  <th class="p-3 font-medium">Department</th>
+                  <th class="p-3 font-medium">Programs</th>
+                  <th class="p-3 font-medium">Submitted by</th>
+                  <th class="p-3 font-medium">Year</th>
+                  <th class="p-3 font-medium">Reason</th>
+                </tr>
+              </thead>
+              <tbody id="deniedStatusTable">
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -114,6 +173,257 @@
       </div>
     </div>
   </main>
-  <script src="{{ url_for('static', filename='registrar.js') }}"></script>
+
+  <!-- Denial Reason Modal -->
+  <div id="denialReasonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden flex flex-col">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-800">Denial Details</h3>
+        <button onclick="closeDenialReasonModal()" class="text-gray-500 hover:text-gray-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <h4 class="text-sm font-medium text-gray-500">Reason for Denial</h4>
+          <p id="denialReasonText" class="mt-1 text-sm text-gray-900"></p>
+        </div>
+      </div>
+      <div class="flex justify-end p-4 border-t">
+        <button onclick="closeDenialReasonModal()" class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    let currentBatchId = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      fetchSubmittedBatches();
+      fetchApprovalStatus();
+    });
+
+    function fetchSubmittedBatches() {
+      fetch('/get_submitted_batches')
+        .then(res => res.json())
+        .then(data => {
+          const table = document.getElementById('subjectOfferingsTable');
+          table.innerHTML = '';
+
+          if (data.success && data.batches.length > 0) {
+            data.batches.forEach(batch => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td class="p-3">${batch.department}</td>
+                <td class="p-3">${batch.program_name}</td>
+                <td class="p-3">
+                  ${batch.submitted_by}
+                </td>
+                <td class="p-3">${batch.year_semester}</td>
+                <td class="p-3 text-right">
+                  <button onclick="openBatchModal(${batch.id}, '${batch.submitted_by}')" class="text-action hover:underline text-sm">View</button>
+                </td>
+              `;
+              table.appendChild(row);
+            });
+          } else {
+            table.innerHTML = `
+              <tr>
+                <td colspan="5" class="py-8 text-center text-gray-500">No subject offerings to review.</td>
+              </tr>
+            `;
+          }
+        });
+    }
+
+    function openBatchModal(batchId, professorName) {
+      currentBatchId = batchId;
+      fetch(`/get_batch_subjects/${batchId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const modal = document.getElementById('batchModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            modalTitle.textContent = `Subjects submitted by ${professorName}`;
+            modalBody.innerHTML = '';
+
+            data.subjects.forEach(subj => {
+              modalBody.innerHTML += `
+                <tr class="border-b">
+                  <td class="p-2">${subj.subject_code}</td>
+                  <td class="p-2">${subj.subject_name}</td>
+                  <td class="p-2 text-center">${subj.total_units}</td>
+                  <td class="p-3 text-center">${subj.lecture}</td>
+                  <td class="p-3 text-center">${subj.com_lab}</td>
+                  <td class="p-3 text-center">${subj.laboratory}</td>
+                  <td class="p-3 text-center">${subj.school_lecture}</td>
+                  <td class="p-3 text-center">${subj.clinic}</td>
+                  <td class="p-3 text-center">${subj.subject_type}</td>
+                </tr>
+              `;
+            });
+
+            // Reset comment section when opening modal
+            document.getElementById('denyComment').value = '';
+            document.getElementById('denyCommentSection').classList.add('hidden');
+            const denyBtn = document.querySelector('#batchModal .bg-red-600');
+            denyBtn.textContent = 'Deny';
+            denyBtn.onclick = function() {
+              showDenyCommentSection();
+            };
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+          }
+        });
+    }
+
+    function closeModal() {
+      document.getElementById('batchModal').classList.add('hidden');
+    }
+
+    function approveBatch(batchId) {
+      fetch(`/approve_batch/${batchId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('Batch approved successfully!');
+            closeModal();
+            fetchSubmittedBatches();
+            fetchApprovalStatus();
+          } else {
+            alert('Failed to approve batch: ' + data.message);
+          }
+        });
+    }
+
+    function denyBatch(batchId) {
+      const comment = document.getElementById('denyComment').value;
+
+      if (!comment) {
+        alert('Please provide a reason for denial');
+        return;
+      }
+
+      fetch(`/deny_batch/${batchId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comment: comment })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Batch denied successfully!');
+          closeModal();
+          fetchSubmittedBatches();
+          fetchApprovalStatus();
+        } else {
+          alert('Failed to deny batch: ' + data.message);
+        }
+      });
+    }
+
+    function fetchApprovalStatus() {
+      fetch('/get_approval_status')
+        .then(res => res.json())
+        .then(data => {
+          const approvedTbody = document.getElementById('approvedStatusTable');
+          const deniedTbody = document.getElementById('deniedStatusTable');
+
+          approvedTbody.innerHTML = '';
+          deniedTbody.innerHTML = '';
+
+          if (data.success && data.statuses.length > 0) {
+            // Filter approved and denied batches
+            const approvedBatches = data.statuses.filter(batch => batch.status === 'approved');
+            const deniedBatches = data.statuses.filter(batch => batch.status === 'denied');
+
+            // Populate approved table
+            if (approvedBatches.length > 0) {
+              approvedBatches.forEach(batch => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td class="p-3">${batch.department}</td>
+                  <td class="p-3">${batch.program_name}</td>
+                  <td class="p-3">${batch.submitted_by}</td>
+                  <td class="p-3">${batch.year_semester}</td>
+                  <td class="p-3 text-green-800">${batch.status}</td>
+                `;
+                approvedTbody.appendChild(row);
+              });
+            } else {
+              approvedTbody.innerHTML = `
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
+                </tr>
+              `;
+            }
+
+            // Populate denied table
+            if (deniedBatches.length > 0) {
+              deniedBatches.forEach(batch => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td class="p-3">${batch.department}</td>
+                  <td class="p-3">${batch.program_name}</td>
+                  <td class="p-3">${batch.submitted_by}</td>
+                  <td class="p-3">${batch.year_semester}</td>
+                  <td class="p-3">
+                    <span onclick="showDenialReason('${batch.comment || ''}')" class="text-red-600 hover:underline cursor-pointer text-sm">
+                      View Reason
+                    </span>
+                  </td>
+                `;
+                deniedTbody.appendChild(row);
+              });
+            } else {
+              deniedTbody.innerHTML = `
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
+                </tr>
+              `;
+            }
+          } else {
+            approvedTbody.innerHTML = `
+              <tr>
+                <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
+              </tr>
+            `;
+            deniedTbody.innerHTML = `
+              <tr>
+                <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
+              </tr>
+            `;
+          }
+        });
+    }
+
+    function showDenialReason(comment) {
+      const modal = document.getElementById('denialReasonModal');
+      document.getElementById('denialReasonText').textContent = comment || 'No reason provided';
+      modal.classList.remove('hidden');
+    }
+
+    function closeDenialReasonModal() {
+      document.getElementById('denialReasonModal').classList.add('hidden');
+    }
+
+    function showDenyCommentSection() {
+      document.getElementById('denyCommentSection').classList.remove('hidden');
+      // Change the Deny button to actually submit the denial
+      const denyBtn = document.querySelector('#batchModal .bg-red-600');
+      denyBtn.textContent = 'Confirm Denial';
+      denyBtn.onclick = function() {
+        denyBatch(currentBatchId);
+      };
+    }
+
+  </script>
 </body>
 </html>

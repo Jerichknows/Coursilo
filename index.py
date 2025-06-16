@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify, render_template, session
-from models import db, Subject, SubmittedSubject, Notification, PaymentScheme
+from flask import Flask, request, jsonify, render_template, session, url_for, redirect, g
+from models import db, Subject, PaymentScheme, PaymentAssignment, Department, Program, YearSemester, SubjectType, User, TeachingLoad, TeachingLoadSubject, AuditLog
 from flask_sqlalchemy import SQLAlchemy
 from collections import defaultdict
 from sqlalchemy import or_
 import os
+from pytz import timezone
+from datetime import datetime, UTC
+from timezone_config import PH_TZ, get_current_ph_time
 
 app = Flask(__name__)
 
@@ -17,31 +20,1018 @@ db.init_app(app)
 
 saved_batches = {}
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+PH_TZ = timezone('Asia/Manila')
+
+def log_audit(action, status, message=None, metadata=None):
+    """Log an audit event with proper timezone handling"""
+    try:
+        audit_log = AuditLog(
+            user_id=g.get('user_id'),
+            route=g.get('route', request.endpoint),
+            action=action,
+            status=status,
+            message=message,
+            log_metadata=metadata or {},
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            response_time=(datetime.now(UTC_TZ) - g.request_start_time).total_seconds(),
+            timestamp=get_current_ph_time()
+        )
+
+        db.session.add(audit_log)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f"Failed to log audit: {str(e)}")
+        db.session.rollback()
+
+def log_important_action(action, target=None, status='success', metadata=None):
+    """Log important actions with optional metadata"""
+    try:
+        audit_log = AuditLog(
+            timestamp=get_current_ph_time(),
+            user_id=session.get('user_id'),
+            action=str(action)[:100],
+            target=str(target)[:100] if target else None,
+            status=str(status)[:20],
+            log_metadata=json.dumps(metadata) if metadata else None,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+
+        db.session.add(audit_log)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f"Failed to log audit: {str(e)}")
+        db.session.rollback()
+
+@app.route('/api/audit-logs', methods=['GET'])
+def get_audit_logs():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+
+        query = AuditLog.query.order_by(AuditLog.timestamp.desc())
+        paginated_logs = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return jsonify({
+            'success': True,
+            'logs': [log.to_dict() for log in paginated_logs.items],
+            'total': paginated_logs.total,
+            'pages': paginated_logs.pages,
+            'current_page': paginated_logs.page
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching audit logs: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ------------------- DEPARTMENTS -------------------
+@app.route('/add_department', methods=['POST'])
+def add_department():
+    data = request.get_json()
+    department_code = data.get('department_code')
+    department_name = data.get('department')
+
+    if not department_code or not department_name:
+        return jsonify({'success': False, 'message': 'Missing fields'}), 400
+
+    existing = Department.query.filter_by(department_code=department_code).first()
+    if existing:
+        return jsonify({'success': False, 'message': 'Department code already exists'}), 400
+
+    new_dept = Department(department_code=department_code, department=department_name)
+    db.session.add(new_dept)
+    db.session.commit()
+
+    log_important_action("Department added", f"{department_code} - {department_name}")
+    return jsonify({'success': True, 'message': 'Department added successfully'})
+
+@app.route('/get_departments', methods=['GET'])  # for program dropdown
+def get_departments():
+    departments = Department.query.all()
+    return jsonify([dept.to_dict() for dept in departments])
+
+@app.route('/get_departments_subject', methods=['GET'])
+def get_departments_for_subject():
+    departments = Department.query.all()
+    return jsonify([{'id': dept.id, 'department': dept.department} for dept in departments])
+
+
+@app.route('/update_department/<int:id>', methods=['PUT'])
+def update_department(id):
+    data = request.get_json()
+    department_code = data.get('department_code')
+    department_name = data.get('department')
+
+    dept = Department.query.get(id)
+    if not dept:
+        return jsonify({'success': False, 'message': 'Department not found'}), 404
+
+    dept.department_code = department_code
+    dept.department = department_name
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Department updated'})
+
+@app.route('/delete_department/<int:id>', methods=['DELETE'])
+def delete_department(id):
+    dept = Department.query.get(id)
+    if not dept:
+        return jsonify({'success': False, 'message': 'Department not found'}), 404
+
+    db.session.delete(dept)
+    db.session.commit()
+
+    log_important_action("Department deleted", f"ID: {id} - {dept.department}")
+    return jsonify({'success': True, 'message': 'Department deleted'})
+# ------------------- PROGRAMS -------------------
+@app.route('/add_program', methods=['POST'])
+def add_program():
+    data = request.get_json()
+    program_code = data.get('program_code')
+    program_name = data.get('program_name')
+    department_id = data.get('department_id')
+
+    if not program_code or not program_name or not department_id:
+        return jsonify({'success': False, 'message': 'Missing fields'}), 400
+
+    new_program = Program(program_code=program_code, program_name=program_name, department_id=department_id)
+    db.session.add(new_program)
+    db.session.commit()
+
+    log_important_action("Program added", f"{program_code} - {program_name}")
+    return jsonify({'success': True})
+
+@app.route('/get_programs', methods=['GET'])
+def get_programs():
+    programs = Program.query.all()
+    return jsonify([p.to_dict() for p in programs])
+
+@app.route('/update_program/<int:id>', methods=['PUT'])
+def update_program(id):
+    data = request.get_json()
+    program = Program.query.get(id)
+
+    if not program:
+        return jsonify({'success': False, 'message': 'Program not found'}), 404
+
+    program.program_code = data.get('program_code')
+    program.program_name = data.get('program_name')
+    program.department_id = data.get('department_id')
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/delete_program/<int:id>', methods=['DELETE'])
+def delete_program(id):
+    program = Program.query.get(id)
+    if not program:
+        return jsonify({'success': False, 'message': 'Program not found'}), 404
+
+    db.session.delete(program)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# ------------------- YEAR/SEMESTERS -------------------
+@app.route('/year-semester', methods=['GET'])
+def fetch_year_semesters():
+    entries = YearSemester.query.order_by(YearSemester.id.desc()).all()
+    return jsonify([e.to_dict() for e in entries]), 200
+
+@app.route('/year-semester', methods=['POST'])
+def add_year_semester():
+    data = request.get_json()
+    new_entry = YearSemester(
+        school_year=data['school_year'],
+        semester=data['semester'],
+        is_active=data['is_active']
+    )
+
+    if new_entry.is_active:
+        YearSemester.query.update({YearSemester.is_active: False})
+
+    db.session.add(new_entry)
+    db.session.commit()
+    log_important_action("Year/Semester added", f"{data['school_year']} - {data['semester']}")
+    return jsonify(new_entry.to_dict()), 201
+
+@app.route('/year-semester/<int:id>/toggle', methods=['PUT'])
+def toggle_year_semester(id):
+    entry = YearSemester.query.get_or_404(id)
+
+    if not entry.is_active:
+        YearSemester.query.update({YearSemester.is_active: False})
+        entry.is_active = True
+    else:
+        entry.is_active = False
+
+    db.session.commit()
+    return jsonify(entry.to_dict()), 200
+
+@app.route('/year-semester/<int:id>', methods=['DELETE'])
+def delete_year_semester(id):
+    entry = YearSemester.query.get_or_404(id)
+    if entry.is_active:
+        return jsonify({'error': 'Cannot delete an active semester'}), 400
+
+    db.session.delete(entry)
+    db.session.commit()
+    return jsonify({'message': 'Deleted successfully'}), 200
+
+# ------------------- SUBJECT TYPES -------------------
+@app.route('/subject-types', methods=['GET'])
+def fetch_subject_types():
+    types = SubjectType.query.all()
+    return jsonify([t.to_dict() for t in types])
+
+@app.route('/subject-types', methods=['POST'])
+def add_subject_type():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Subject type name is required'}), 400
+
+    new_type = SubjectType(name=name)
+    db.session.add(new_type)
+    db.session.commit()
+    log_important_action("Subject type added", name)
+    return jsonify(new_type.to_dict()), 201
+
+@app.route('/subject-types/<int:type_id>', methods=['DELETE'])
+def delete_subject_type(type_id):
+    subject_type = SubjectType.query.get_or_404(type_id)
+    db.session.delete(subject_type)
+    db.session.commit()
+    return jsonify({'message': 'Deleted successfully'})
+
+# ------------------- SUBJECTS -------------------
+@app.route('/get_subject_types', methods=['GET'])
+def get_subject_types():
+    types = SubjectType.query.all()
+    return jsonify([t.to_dict() for t in types])
 
 @app.route('/add_subject', methods=['POST'])
 def add_subject():
-    data = request.json
-    new_subject = Subject(
-        subject_code=data.get('subject_code'),
-        subject_name=data.get('subject_name'),
-        year_level=data.get('year_level'),
-        department=data.get('department'),
-        lecture=data.get('lecture', 0),
-        com_lab=data.get('com_lab', 0),
-        laboratory=data.get('laboratory', 0),
-        school_lecture=data.get('school_lecture', 0),
-        clinic=data.get('clinic', 0),
-        subject_type=data.get('subject_type'),
-        subject_nstp=data.get('subject_nstp')
-    )
-    db.session.add(new_subject)
-    db.session.commit()
-    return jsonify({"message": "Subject added successfully"})
+    data = request.get_json()
+    try:
+        subject = Subject(
+            subject_code=data['subject_code'],
+            subject_name=data['subject_name'],
+            year_level=data['year_level'],
+            department_id=data['department_id'],
+            lecture=data.get('lecture', 0),
+            com_lab=data.get('com_lab', 0),
+            laboratory=data.get('laboratory', 0),
+            school_lecture=data.get('school_lecture', 0),
+            clinic=data.get('clinic', 0),
+            subject_type_id=data['subject_type_id'],
+            is_nstp=data.get('is_nstp', False)
+        )
+        db.session.add(subject)
+        db.session.commit()
+        log_important_action("Subject added", f"{data['subject_code']} - {data['subject_name']}")
+        return jsonify({'success': True, 'message': 'Subject added successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
 
-approved_subject_list = []
+@app.route('/subjects_by_department')
+def subjects_by_department():
+    departments = Department.query.all()
+    result = []
+
+    for dept in departments:
+        subjects = Subject.query.filter_by(department_id=dept.id).all()
+        dept_data = {
+            'id': dept.id,
+            'name': dept.department,
+            'subjects': []
+        }
+
+        for s in subjects:
+            dept_data['subjects'].append({
+                'subject_code': s.subject_code,
+                'subject_name': s.subject_name,
+                'year_level': s.year_level,
+                'lecture': s.lecture,
+                'comb_lab': s.com_lab,
+                'laboratory': s.laboratory,
+                'school_lecture': s.school_lecture,
+                'clinic': s.clinic,
+                'subject_type': s.subject_type.name if s.subject_type else 'N/A',
+                'is_nstp': s.is_nstp
+            })
+
+        result.append(dept_data)
+
+    return jsonify({'departments': result})
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def show_login_page():
+    if request.method == 'POST':
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "No data provided"}), 400
+
+        email = data.get('email')
+        password = data.get('password')
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.check_password(password):  # Secure password check
+            session['user_id'] = user.id
+            session['role'] = user.user_type  # Assuming your model uses `user_type`
+
+            # Role-based redirection
+            if user.user_type in ['dean', 'program-head']:
+                redirect_url = url_for('index')
+            elif user.user_type == 'admin':
+                redirect_url = url_for('admin')
+            else:
+                return jsonify({"success": False, "message": "Unknown role"}), 400
+
+            log_important_action("User login", status="success")
+            return jsonify({
+                "success": True,
+                "message": "Login successful",
+                "redirect": redirect_url
+            })
+
+        log_important_action("Failed login attempt", status="failed")
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+    return render_template('login.html')
+
+@app.route('/current_user')
+def get_current_user():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'})
+
+    # Get department info
+    department_info = None
+    if user.department_id and user.user_type.lower() in ['dean', 'program-head']:
+        department = db.session.get(Department, user.department_id)
+        if department:
+            department_info = {
+                'id': department.id,
+                'code': department.department_code,
+                'name': department.department
+            }
+
+    # Get program details for program-head
+    program_details = []
+    if user.user_type.lower() == 'program-head' and user.programs:
+        try:
+            program_ids = [int(id) for id in user.programs.split(',') if id.strip()]
+            programs = Program.query.filter(Program.id.in_(program_ids)).all()
+
+            program_details = [{
+                'id': program.id,
+                'code': program.program_code,
+                'name': program.program_name
+            } for program in programs]
+        except Exception as e:
+            print(f"Error fetching programs: {str(e)}")
+
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'user_type': user.user_type,
+            'department': department_info if user.user_type.lower() in ['dean', 'program-head'] else None,
+            'programs': program_details if user.user_type.lower() == 'program-head' else None
+        }
+    })
+
+@app.route("/users", methods=["GET"])
+def get_users():
+    try:
+        # Fetch all users from the database
+        users = User.query.all()
+        return jsonify({
+            "success": True,
+            "users": [user.to_dict() for user in users]
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error fetching users",
+            "error": str(e)
+        }), 500
+
+
+@app.route("/register", methods=["POST"])
+def register():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "No data provided"}), 400
+
+        # ... [your existing validation code] ...
+
+        new_user = User(
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            email=data["email"],
+            user_type=data["user_type"],
+            department_id=data.get("department_id"),
+            programs=",".join(data.get("programs", []))
+        )
+        new_user.set_password(data["password"])
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        log_important_action("User registered", f"{data['email']}", status="success")
+
+        return jsonify({
+            "success": True,
+            "message": "Registered successfully",
+            "user": new_user.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        log_important_action("Registration failed", f"{data.get('email', 'unknown')}", status="failed")
+        return jsonify({
+            "success": False,
+            "message": "Registration failed",
+            "error": str(e)
+        }), 500
+
+@app.route('/admin')
+def admin():
+    if 'user_id' not in session:
+        return redirect(url_for('show_login_page'))
+    return render_template('admin.html')
+
+
+@app.route('/logout')
+def logout():
+    if 'user_id' in session:
+        log_important_action("User logout", status="success")
+    session.clear()  # Clear all session data
+    return redirect(url_for('show_login_page'))
+
+
+@app.route('/')
+def index():
+    if 'user_id' not in session:
+        return redirect(url_for('show_login_page'))
+    return render_template('index.html')
+
+@app.route('/year-semester-sorted', methods=['GET'])
+def get_sorted_year_semesters():
+    entries = YearSemester.query.order_by(YearSemester.is_active.desc(), YearSemester.id.desc()).all()
+    return jsonify([e.to_dict() for e in entries]), 200
+
+@app.route('/assigned-programs', methods=['GET'])
+def get_assigned_programs():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user = db.session.get(User, session['user_id'])
+    if not user or user.user_type.lower() != 'program-head':
+        return jsonify({'success': False, 'message': 'Only program-head can access programs'}), 403
+
+    try:
+        program_ids = [int(id) for id in user.programs.split(',') if id.strip()]
+        programs = Program.query.filter(Program.id.in_(program_ids)).all()
+        return jsonify({
+            'success': True,
+            'programs': [p.to_dict() for p in programs]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/year_levels_by_department/<int:department_id>', methods=['GET'])
+def year_levels_by_department(department_id):
+    try:
+        year_levels = (
+            db.session.query(Subject.year_level)
+            .filter(Subject.department_id == department_id)
+            .distinct()
+            .order_by(Subject.year_level)
+            .all()
+        )
+        levels = [yl[0] for yl in year_levels]
+        return jsonify({'success': True, 'year_levels': levels}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/departments_year', methods=['GET'])
+def get_departments_year():
+    try:
+        departments = Department.query.all()
+        return jsonify({
+            'success': True,
+            'departments': [d.to_dict() for d in departments]
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/subjects_by_program_year')
+def subjects_by_program_year():
+    year_semester_id = request.args.get('year_semester_id')
+    program_id = request.args.get('program_id')
+    year_level = request.args.get('year_level')
+
+    try:
+        # Get the program using modern SQLAlchemy 2.0 pattern
+        program = db.session.get(Program, program_id)
+        if not program:
+            return jsonify({'success': False, 'message': 'Program not found'}), 404
+
+        # Get subjects for this department and year level
+        subjects = db.session.execute(
+            db.select(Subject)
+            .filter_by(
+                department_id=program.department_id,
+                year_level=year_level
+            )
+        ).scalars().all()
+
+        # Convert to dictionary format
+        subjects_data = [s.to_dict() for s in subjects]
+
+        return jsonify({
+            'success': True,
+            'subjects': subjects_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+@app.route('/year_levels_by_department/<int:department_id>')
+def get_year_levels_by_department(department_id):
+    try:
+        # Get all subjects for this department
+        subjects = Subject.query.filter_by(department_id=department_id).all()
+
+        # Extract unique year levels
+        year_levels = list(set([s.year_level for s in subjects]))
+
+        return jsonify({
+            'success': True,
+            'year_levels': year_levels
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+@app.route('/get_subject_details/<int:subject_id>')
+def get_subject_details(subject_id):
+    try:
+        # Use modern SQLAlchemy 2.0 pattern
+        subject = db.session.get(Subject, subject_id)
+        if not subject:
+            return jsonify({'success': False, 'message': 'Subject not found'}), 404
+
+        # Calculate total units (sum of all hours)
+        total_units = (subject.lecture or 0) + (subject.com_lab or 0) + \
+                     (subject.laboratory or 0) + (subject.school_lecture or 0) + \
+                     (subject.clinic or 0)
+
+        return jsonify({
+            'success': True,
+            'subject': {
+                'id': subject.id,
+                'subject_code': subject.subject_code,
+                'subject_name': subject.subject_name,
+                'total_units': total_units,
+                'lecture': subject.lecture,
+                'com_lab': subject.com_lab,
+                'laboratory': subject.laboratory,
+                'school_lecture': subject.school_lecture,
+                'clinic': subject.clinic,
+                'subject_type': subject.subject_type.name if subject.subject_type else 'N/A',
+                'is_nstp': subject.is_nstp
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@app.route('/save_teaching_load', methods=['POST'])
+def save_teaching_load():
+    data = request.get_json()
+
+    try:
+        # Validate required fields
+        if not all(key in data for key in ['year_semester_id', 'program_id', 'subjects']):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
+        # Get current user ID from session
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+        user_id = session['user_id']
+
+        # Create a new TeachingLoad record
+        teaching_load = TeachingLoad(
+            year_semester_id=data['year_semester_id'],
+            program_id=data['program_id'],
+            submitted_by=user_id,  # Use the user_id from session
+            status='pending'  # Add default status
+        )
+        db.session.add(teaching_load)
+        db.session.flush()  # To get the ID
+
+        # Create TeachingLoadSubject records for each subject
+        for subject_data in data['subjects']:
+            # Calculate total units if not provided
+            total_units = subject_data.get('total_units', 0)
+            if not total_units:
+                total_units = (
+                    subject_data.get('lecture_hours', 0) +
+                    subject_data.get('com_lab_hours', 0) +
+                    subject_data.get('laboratory_hours', 0) +
+                    subject_data.get('school_lecture_hours', 0) +
+                    subject_data.get('clinic_hours', 0)
+                )
+
+            load_subject = TeachingLoadSubject(
+                teaching_load_id=teaching_load.id,
+                subject_id=subject_data['id'],
+                lecture_hours=subject_data.get('lecture_hours', 0),
+                com_lab_hours=subject_data.get('com_lab_hours', 0),
+                laboratory_hours=subject_data.get('laboratory_hours', 0),
+                school_lecture_hours=subject_data.get('school_lecture_hours', 0),
+                clinic_hours=subject_data.get('clinic_hours', 0),
+                total_units=total_units
+            )
+            db.session.add(load_subject)
+
+        db.session.commit()
+
+        log_important_action("Batch load saved", f"Batch ID: {teaching_load.id} with {len(data['subjects'])} subjects")
+        return jsonify({
+            'success': True,
+            'message': 'Teaching load saved successfully',
+            'teaching_load_id': teaching_load.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error saving teaching load: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f"Failed to save teaching load: {str(e)}"
+        }), 500
+
+@app.route('/get_saved_batches')
+def get_saved_batches():
+    try:
+        # Only get unsubmitted teaching loads (e.g., status is 'draft' or 'saved')
+        batches = db.session.query(
+            TeachingLoad,
+            User,
+            Program
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).filter(
+            TeachingLoad.status.in_(['pending','submitted'])
+        ).order_by(
+            TeachingLoad.submission_date.desc()
+        ).all()
+
+        result = []
+        for load, user, program in batches:
+            result.append({
+                'id': load.id,
+                'program_name': program.program_name,
+                'program_code': program.program_code,
+                'year_semester': f"{load.year_semester.school_year} - {load.year_semester.semester}",
+                'submitted_by': f"{user.first_name} {user.last_name}",
+                'user_role': user.user_type,
+                'submission_date': load.submission_date.strftime('%Y-%m-%d %H:%M'),
+                'status': load.status,
+                'is_submitted': load.status == 'submitted'
+            })
+
+        return jsonify({'success': True, 'batches': result})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+
+@app.route('/get_batch_subjects/<int:batch_id>')
+def get_batch_subjects(batch_id):
+    try:
+        subjects = db.session.query(
+            TeachingLoadSubject,
+            Subject
+        ).join(
+            Subject, TeachingLoadSubject.subject_id == Subject.id
+        ).filter(
+            TeachingLoadSubject.teaching_load_id == batch_id
+        ).all()
+
+        result = []
+        for load_subject, subject in subjects:
+            result.append({
+                'subject_code': subject.subject_code,
+                'subject_name': subject.subject_name,
+                'total_units': load_subject.total_units,
+                'lecture': load_subject.lecture_hours,
+                'com_lab': load_subject.com_lab_hours,
+                'laboratory': load_subject.laboratory_hours,
+                'school_lecture': load_subject.school_lecture_hours,
+                'clinic': load_subject.clinic_hours,
+                'subject_type': subject.subject_type.name if subject.subject_type else 'N/A',
+                'is_nstp' : subject.is_nstp
+            })
+
+        return jsonify({'success': True, 'subjects': result})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@app.route('/delete_batch/<int:batch_id>', methods=['DELETE'])
+def delete_batch(batch_id):
+    try:
+        load = db.session.get(TeachingLoad, batch_id)
+        if not load:
+            return jsonify({'success': False, 'message': 'Batch not found'}), 404
+
+        # Optional: Also delete associated subjects if needed
+        TeachingLoadSubject.query.filter_by(teaching_load_id=batch_id).delete()
+        db.session.delete(load)
+        db.session.commit()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/submit_batch/<int:batch_id>', methods=['POST'])
+def submit_batch(batch_id):
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+        # Updated to use db.session.get()
+        teaching_load = db.session.get(TeachingLoad, batch_id)
+        if not teaching_load:
+            return jsonify({'success': False, 'message': 'Batch not found'}), 404
+
+        if teaching_load.status == 'submitted':
+            return jsonify({'success': False, 'message': 'Batch has already been submitted'}), 400
+
+        teaching_load.status = 'submitted'
+        db.session.commit()
+
+        log_important_action("Batch submitted", f"Batch ID: {batch_id}")
+        return jsonify({'success': True, 'message': 'Batch submitted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error submitting batch: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to submit batch: {str(e)}'}), 500
+
+
+@app.route('/approve_batch/<int:batch_id>', methods=['POST'])
+def approve_batch(batch_id):
+    try:
+        batch_subjects = db.session.query(TeachingLoadSubject).filter_by(teaching_load_id=batch_id).all()
+        teaching_load = db.session.get(TeachingLoad, batch_id)
+
+        if not batch_subjects or not teaching_load:
+            return jsonify({'success': False, 'message': 'Batch not found or has no subjects'}), 404
+
+        for subj in batch_subjects:
+            subj.status = 'approved'
+        teaching_load.status = 'approved'
+        teaching_load.finance_status = 'pending'  # Set finance status to pending
+        db.session.commit()
+
+        log_important_action("Batch approved", f"Batch ID: {batch_id}")
+        return jsonify({'success': True, 'message': 'Batch approved successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/deny_batch/<int:batch_id>', methods=['POST'])
+def deny_batch(batch_id):
+    try:
+        data = request.get_json()
+        comment = data.get('comment', '')
+
+        batch_subjects = db.session.query(TeachingLoadSubject).filter_by(teaching_load_id=batch_id).all()
+        teaching_load = db.session.get(TeachingLoad, batch_id)
+
+        if not batch_subjects or not teaching_load:
+            return jsonify({'success': False, 'message': 'Batch not found or has no subjects'}), 404
+
+        for subj in batch_subjects:
+            subj.status = 'denied'
+            subj.comment = comment  # Store the comment with each subject
+
+        teaching_load.status = 'denied'
+        teaching_load.comment = comment  # Store the comment at the batch level
+
+        db.session.commit()
+
+        log_important_action("Batch denied", f"Batch ID: {batch_id} with comment: {comment[:50]}")
+        return jsonify({'success': True, 'message': 'Batch denied successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/get_submitted_batches')
+def get_submitted_batches():
+    try:
+        batches = db.session.query(
+            TeachingLoad,
+            User,
+            Program,
+            Department
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).filter(
+            TeachingLoad.status == 'submitted'  # ✅ Only get pending submissions
+        ).order_by(
+            TeachingLoad.submission_date.desc()
+        ).all()
+
+        result = []
+        for load, user, program, department in batches:
+            result.append({
+                'id': load.id,
+                'program_name': program.program_name,
+                'program_code': program.program_code,
+                'department': department.department,
+                'year_semester': f"{load.year_semester.school_year} - {load.year_semester.semester}",
+                'submitted_by': f"{user.first_name} {user.last_name}",
+                'user_role': user.user_type,
+                'submission_date': load.submission_date.strftime('%Y-%m-%d %H:%M'),
+                'status': load.status,
+                'is_submitted': load.status == 'submitted'
+            })
+
+        return jsonify({'success': True, 'batches': result})
+
+    except Exception as e:
+        app.logger.error(f"Error fetching submitted batches: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/get_approval_status')
+def get_approval_status():
+    try:
+        loads = db.session.query(
+            TeachingLoad.id,
+            User.first_name,
+            User.last_name,
+            TeachingLoad.status,
+            TeachingLoad.comment,
+            Program.program_name,
+            Department.department,
+            YearSemester.school_year,
+            YearSemester.semester
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).filter(
+            TeachingLoad.status.in_(['approved', 'denied'])
+        ).order_by(
+            TeachingLoad.id.desc()
+        ).all()
+
+        status_list = []
+        for load in loads:
+            status_list.append({
+                'id': load.id,
+                'submitted_by': f"{load.first_name} {load.last_name}",
+                'status': load.status,
+                'comment': load.comment,
+                'program_name': load.program_name,
+                'department': load.department,
+                'year_semester': f"{load.semester} Sem {load.school_year}"
+            })
+
+        return jsonify({'success': True, 'statuses': status_list})
+    except Exception as e:
+        app.logger.error(f"Error fetching approval status: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/get_pending_approvals')
+def get_pending_approvals():
+    try:
+        pending_loads = db.session.query(
+            TeachingLoad.id,
+            Department.department,
+            Program.program_name,
+            User.first_name,
+            User.last_name,
+            YearSemester.school_year,
+            YearSemester.semester,
+            db.func.count(TeachingLoadSubject.id).label('subject_count')
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).join(
+            TeachingLoadSubject, TeachingLoadSubject.teaching_load_id == TeachingLoad.id
+        ).filter(
+            TeachingLoad.status == 'approved',
+            TeachingLoad.finance_status == 'pending'
+        ).group_by(
+            TeachingLoad.id,
+            Department.department,
+            Program.program_name,
+            User.first_name,
+            User.last_name,
+            YearSemester.school_year,
+            YearSemester.semester
+        ).order_by(
+            TeachingLoad.submission_date.desc()
+        ).all()
+
+        result = [{
+            'id': load.id,
+            'department': load.department,
+            'program_name': load.program_name,
+            'submitted_by': f"{load.first_name} {load.last_name}",
+            'subject_count': load.subject_count,
+            'year_semester': f"{load.semester} Sem {load.school_year}"
+        } for load in pending_loads]
+
+        return jsonify({
+            'success': True,
+            'batches': result
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching pending approvals: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/get_denied_batches')
+def get_denied_batches():
+    try:
+        denied_batches = db.session.query(
+            TeachingLoad.id,
+            User.first_name,
+            User.last_name,
+            TeachingLoad.comment,
+            Program.program_name,
+            Department.department,
+            YearSemester.school_year,
+            YearSemester.semester
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).filter(
+            TeachingLoad.status == 'denied'
+        ).order_by(
+            TeachingLoad.submission_date.desc()
+        ).all()
+
+        result = []
+        for batch in denied_batches:
+            result.append({
+                'id': batch.id,
+                'submitted_by': f"{batch.first_name} {batch.last_name}",
+                'department': batch.department,
+                'program_name': batch.program_name,
+                'year_semester': f"{batch.semester} Sem {batch.school_year}",
+                'reason': batch.comment or "No reason provided"
+            })
+
+        return jsonify({'success': True, 'batches': result})
+    except Exception as e:
+        app.logger.error(f"Error fetching denied batches: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/registrar', methods=['GET', 'POST'])
@@ -50,759 +1040,335 @@ def registrar():
 
 @app.route('/finance', methods=['GET', 'POST'])
 def finance():
-    # sample_data = session.get('approved_subjects', [])
-    global approved_subject_list
-    subject_codes = approved_subject_list
+    return render_template('finance.html')
 
-    # subject_codes = ['lemao', 'flemao', 'NET101']
-
-    # Query for all subjects with subject_code in the provided list
-    subjects = SubmittedSubject.query.filter(SubmittedSubject.subject_code.in_(subject_codes)).all()
-
-    # Prepare the data to be passed to the template
-    subjects_data = []
-    for subject in subjects:
-        subjects_data.append({
-            "id": subject.id,
-            "professor_id": subject.professor_id,
-            "subject_code": subject.subject_code,
-            "subject_name": subject.subject_name,
-            "department": subject.department,
-            "year_level": subject.year_level,
-            "lecture": subject.lecture,
-            "com_lab": subject.com_lab,
-            "laboratory": subject.laboratory,
-            "school_lecture": subject.school_lecture,
-            "clinic": subject.clinic,
-            "subject_type": subject.subject_type,
-            "subject_nstp": subject.subject_nstp
-        })
-    # approved_subject_list.clear()
-
-    return render_template('Finance.html', subjects_data=subjects_data)
-
-@app.route('/paymentscheme')
-def paymentscheme():
-    return render_template('paymentscheme.html')
-
-@app.route('/get_subjects', methods=['GET'])
-def get_subjects():
-    subjects = Subject.query.all()
-    return jsonify([{
-        'id': subject.id,
-        'subject_code': subject.subject_code,
-        'subject_name': subject.subject_name,
-        'year_level': subject.year_level,
-        'department': subject.department,
-        'lecture': subject.lecture,
-        'com_lab': subject.com_lab,
-        'laboratory': subject.laboratory,
-        'school_lecture': subject.school_lecture,
-        'clinic': subject.clinic,
-        'subject_type': subject.subject_type,
-        'subject_nstp': subject.subject_nstp
-    } for subject in subjects])
-
-@app.route('/delete_subject/<int:subject_id>', methods=['DELETE'])
-def delete_subject(subject_id):
-    subject = Subject.query.get(subject_id)
-    if subject:
-        db.session.delete(subject)
-        db.session.commit()
-        return jsonify({"message": "Subject deleted successfully"})
-    return jsonify({"error": "Subject not found"}), 404
-
-@app.route('/admin')
-def professor():
-    return render_template('admin.html')
-
-@app.route('/get_departments', methods=['GET'])
-def get_departments():
-    """Get all unique departments"""
-    departments = db.session.query(Subject.department).distinct().all()
-    return jsonify([department[0] for department in departments])
-
-@app.route('/get_years_by_department/<department>', methods=['GET'])
-def get_years_by_department(department):
-    """Get year levels for a specific department"""
-    years = db.session.query(Subject.year_level).filter_by(department=department).distinct().all()
-    return jsonify([year[0] for year in sorted(years)])
-
-@app.route('/get_subjects_by_department_and_year/<department>/<year>', methods=['GET'])
-def get_subjects_by_department_and_year(department, year):
-    """Get subjects for a specific department and year level"""
-    subjects = Subject.query.filter_by(department=department, year_level=year).all()
-    return jsonify([{
-        'id': subject.id,
-        'subject_code': subject.subject_code,
-        'subject_name': subject.subject_name,
-        'department': subject.department,
-        'year_level': subject.year_level,
-        'lecture': subject.lecture,
-        'com_lab': subject.com_lab,
-        'laboratory': subject.laboratory,
-        'school_lecture': subject.school_lecture,
-        'clinic': subject.clinic,
-        'subject_type': subject.subject_type,
-        'subject_nstp': subject.subject_nstp
-    } for subject in subjects])
-
-@app.route('/save_batch', methods=['POST'])
-def save_batch():
-    data = request.json
-    professor_id = data['professorId']
-    subjects = data['subjects']
-
-    # Remove existing subjects for this professor (if any)
+@app.route('/get_assigned_payments')
+def get_assigned_payments():
     try:
-        SubmittedSubject.query.filter_by(professor_id=professor_id).delete()
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "Failed to delete existing subjects."}), 500
-
-    # Save new subjects
-    for subj in subjects:
-        new_subject = SubmittedSubject(
-            subject_code=subj['code'],
-            subject_name=subj['name'],
-            department=subj['department'],
-            year_level=subj['year'],
-            professor_id=professor_id,
-            lecture=subj['lecture'],
-            com_lab=subj['com_lab'],
-            laboratory=subj['laboratory'],
-            school_lecture=subj['school_lecture'],
-            clinic=subj['clinic'],
-            subject_type=subj['subject_type'],
-            subject_nstp=subj['subject_nstp'],
-            approved_denied="False",
-            assigned="False",
-            status="Saved" # Initial status
-        )
-        db.session.add(new_subject)
-
-    db.session.commit()
-    return jsonify({"message": "Batch saved successfully"})
-
-@app.route('/get_submitted_batches')
-def get_submitted_batches():
-    # Fetch all submitted subjects
-    subjects = SubmittedSubject.query.all()
-
-    # Group subjects by professor_id
-    batches_dict = defaultdict(list)
-    for subj in subjects:
-        batches_dict[subj.professor_id].append(subj)
-
-    # Build list of batches
-    batches = []
-    for professor_id, subjects_list in batches_dict.items():
-        total_subjects = len(subjects_list)
-        total_units = sum(subject.units for subject in subjects_list)
-
-        subjects_data = []
-        for s in subjects_list:
-            subjects_data.append({
-                'code': s.subject_code,
-                'name': s.subject_name,
-                'department': s.department,
-                'year': s.year_level,
-                'lecture': s.lecture,
-                'com_lab': s.com_lab,
-                'laboratory': s.laboratory,
-                'school_lecture': s.school_lecture,
-                'clinic': s.clinic,
-                'subject_type': s.subject_type,
-                'subject_nstp': s.subject_nstp,
-                'approved_denied': s.approved_denied,
-                'assigned': s.assigned,
-                'status': s.status,
-                'comment': s.comment
-
-            })
-
-        batches.append({
-            'professorId': professor_id,
-            'totalSubjects': total_subjects,
-            'subjects': subjects_data
-        })
-
-    return jsonify(batches)  # Fixed indentation
-
-
-@app.route("/submit_subjects", methods=["POST"])
-def submit_subjects():
-    data = request.json
-
-    # Validate the incoming data
-    if not isinstance(data, dict):
-        return jsonify({"error": "Invalid data format."}), 400
-
-    professor_id = data.get("professor_id")
-    if not professor_id:
-        return jsonify({"error": "Professor ID not provided."}), 400
-
-    subjects = data.get("subjects")
-    if not isinstance(subjects, list) or not subjects:
-        return jsonify({"error": "Subjects list is either missing or empty."}), 400
-
-    # Begin a transaction
-    try:
-        for subject in subjects:
-            # Each subject needs to have its required fields
-            new_submission = SubmittedSubject(
-                professor_id=professor_id,
-                subject_code=subject.get("subject_code"),
-                subject_name=subject.get("subject_name"),
-                department=subject.get("department", "Unknown"),
-                year_level=subject.get("year_level"),
-                lecture=subject.get('lecture', 0),
-                com_lab=subject.get('com_lab', 0),
-                laboratory=subject.get('laboratory', 0),
-                school_lecture=subject.get('school_lecture', 0),
-                clinic=subject.get('clinic', 0),
-                subject_type=subject.get('subject_type'),
-                subject_nstp=subject.get('subject_nstp'),
-                approved_denied="False",
-                assigned="False",
-                status="Saved",
-                reg_fee=subject.get("reg_fee", 0.0),
-                misc_fee=subject.get("misc_fee", 0.0),
-                affi_fee=subject.get("affi_fee", 0.0)
-            )
-            db.session.add(new_submission)
-
-        db.session.commit()  # Commit all submissions at once
-        return jsonify({"message": "Subjects submitted successfully."}), 200  # 200 Created status
-    except Exception as e:
-        db.session.rollback()  # Rollback the session on error
-        print(f"Database error: {e}")  # Log the error
-        return jsonify({"error": "An error occurred during submission."}), 500  # Internal Server Error
-
-@app.route('/delete_subjects_by_professor/<int:professor_id>', methods=['DELETE'])
-def delete_subjects_by_professor(professor_id):
-    try:
-        num_deleted = db.session.query(SubmittedSubject).filter_by(professor_id=professor_id).delete()
-        db.session.commit()
-        return jsonify({"message": f"Deleted {num_deleted} subjects for Professor ID {professor_id}"}), 200
-    except:
-        db.session.rollback()
-        return jsonify({"error": "Failed to delete subjects"}), 500
-
-@app.route('/get_submitted_subjects', methods=['GET'])
-def get_submitted_subjects():
-    try:
-        # Query only subjects where approved_denied is False
-        subjects = SubmittedSubject.query.filter_by(approved_denied="False").all()
-        subjects_list = []
-
-        for subject in subjects:
-            subjects_list.append({
-                "id": subject.id,
-                "professor_id": subject.professor_id,
-                "subject_code": subject.subject_code,
-                "subject_name": subject.subject_name,
-                "department": subject.department,
-                "year_level": subject.year_level,
-                'lecture': subject.lecture,
-                'com_lab': subject.com_lab,
-                'laboratory': subject.laboratory,
-                'school_lecture': subject.school_lecture,
-                'clinic': subject.clinic,
-                'subject_type': subject.subject_type,
-                'subject_nstp': subject.subject_nstp,
-                "approved_denied": subject.approved_denied,
-                "assigned": subject.assigned,
-                "status": subject.status,
-                "comment": subject.comment
-            })
-
-        if not subjects_list:
-            return jsonify([]), 200  # Return an empty list if no subjects found
-
-        return jsonify(subjects_list), 200
-    except Exception as e:
-        print(f"Error fetching subjects: {e}")
-        return jsonify({"error": "An error occurred while fetching subjects."}), 500
-
-@app.route('/get_approved_subjects', methods=['POST', 'GET'])
-def get_approved_subjects():
-    try:
-        # Query only subjects where approved_denied is "True" and assigned is False
-        subjects = SubmittedSubject.query.filter_by(approved_denied="True", assigned="False").all()
-        subjects_list = []
-
-        for subject in subjects:
-            subjects_list.append({
-                "id": subject.id,
-                "professor_id": subject.professor_id,
-                "subject_code": subject.subject_code,
-                "subject_name": subject.subject_name,
-                "department": subject.department,
-                "year_level": subject.year_level,
-                'lecture': subject.lecture,
-                'com_lab': subject.com_lab,
-                'laboratory': subject.laboratory,
-                'school_lecture': subject.school_lecture,
-                'clinic': subject.clinic,
-                'subject_type': subject.subject_type,
-                'subject_nstp': subject.subject_nstp
-            })
-
-        return jsonify(subjects_list), 200
-    except Exception as e:
-        print(f"Error fetching subjects: {e}")
-        return jsonify({"error": "An error occurred while fetching subjects."}), 500
-
-
-@app.route('/get_denied_subjects', methods=['GET'])
-def get_denied_subjects():
-    try:
-        # Fetch all denied notifications
-        notifications = Notification.query.filter(Notification.status == "Denied").all()
-        denied_subjects = []
-
-        for notification in notifications:
-            denied_subjects.append({
-                "id": notification.id,
-                "professor_id": notification.professor_id,
-                "subject_code": notification.subject_code,
-                "subject_name": notification.subject_name,
-                "department": notification.department,
-                "year_level": notification.year_level,
-                "comment": notification.comment,
-                "lecture": notification.lecture,
-                "com_lab": notification.com_lab,
-                "laboratory": notification.laboratory,
-                "school_lecture": notification.school_lecture,
-                "clinic": notification.clinic,
-                "subject_type": notification.subject_type,
-                "subject_nstp": notification.subject_nstp
-            })
-
-        return jsonify(denied_subjects), 200
-    except Exception as e:
-        print("Failed to fetch denied subjects", e)
-        return jsonify({"error": "Failed to fetch denied subjects"}), 500
-
-@app.route('/approve_subject', methods=['POST'])
-def approve_subject():
-    data = request.json
-
-    # Ensure that the required fields are present in the incoming data
-    if not all(key in data for key in ['professor_id', 'subject_code', 'subject_name', 'department', 'year_level', 'lecture','com_lab', 'laboratory', 'school_lecture','clinic','subject_type','subject_nstp']):
-        return jsonify({"error": "Missing required fields"}), 400
-
-    # Find the submitted subject by subject_code
-    subject_code = data.get('subject_code')
-    subject = SubmittedSubject.query.filter_by(subject_code=subject_code).first()
-
-    if not subject:
-        return jsonify({"error": "Subject not found"}), 404  # Return 404 if subject does not exist
-
-    # Set approved_denied to True
-    subject.approved_denied = "True"
-    subject.assigned = "False"
-
-    # Create a new notification
-    new_notification = Notification(
-        professor_id=data.get('professor_id'),
-        subject_code=data.get('subject_code'),
-        subject_name=data.get('subject_name'),
-        department=data.get('department'),
-        year_level=data.get('year_level'),
-        lecture=data.get('lecture', 0),
-        com_lab=data.get('com_lab', 0),
-        laboratory=data.get('laboratory', 0),
-        school_lecture=data.get('school_lecture', 0),
-        clinic=data.get('clinic', 0),
-        subject_type=data.get('subject_type'),
-        subject_nstp=data.get('subject_nstp'),
-        status=data.get('status'),  # Set a default status or get it from the data if needed
-        approved_by=data.get('approved_by')
-    )
-
-    try:
-        db.session.add(new_notification)
-        db.session.commit()
-        return jsonify({"message": "Subject added successfully"}), 200  # Return 201 Created status
-    except Exception as e:
-        db.session.rollback()  # Rollback the session in case of error
-        print("Error adding subject:", e)
-        return jsonify({"error": "Failed to add subject"}), 500  # Return 500 Internal Server Error
-
-@app.route('/approve_all_subjects', methods=['POST'])
-def approve_all_subjects():
-    data = request.json
-
-    # Check if professor_id is provided
-    if 'professor_id' not in data:
-        return jsonify({"error": "professor_id is required"}), 400
-
-    professor_id = data['professor_id']
-    approved_by = data.get('approved_by', 'Registrar')
-    subject_ids = data.get('subject_ids', [])
-
-    try:
-        # Base query for this professor's subjects
-        query = SubmittedSubject.query.filter_by(professor_id=professor_id)
-
-        # Filter for specific subjects if IDs are provided
-        if subject_ids:
-            query = query.filter(SubmittedSubject.id.in_(subject_ids))
-
-        # Get only pending subjects (not approved and not assigned)
-        submitted_subjects = query.filter(
-            or_(
-                SubmittedSubject.approved_denied == "False",
-                SubmittedSubject.approved_denied == None
-            ),
-            or_(
-                SubmittedSubject.assigned == "False",
-                SubmittedSubject.assigned == None
-            )
+        assigned_payments = db.session.query(
+            TeachingLoad.id,
+            Department.department,
+            Program.program_name,
+            User.first_name,
+            User.last_name,
+            YearSemester.school_year,
+            YearSemester.semester,
+            db.func.count(TeachingLoadSubject.id).label('subject_count'),
+            PaymentScheme.payment_name,
+            PaymentAssignment.payment_plan,
+            PaymentAssignment.total_amount
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).join(
+            TeachingLoadSubject, TeachingLoadSubject.teaching_load_id == TeachingLoad.id
+        ).join(
+            PaymentAssignment, PaymentAssignment.teaching_load_id == TeachingLoad.id
+        ).join(
+            PaymentScheme, PaymentAssignment.payment_scheme_id == PaymentScheme.id
+        ).filter(
+            TeachingLoad.finance_status == 'approved'  # Changed from 'processed' to 'approved'
+        ).group_by(
+            TeachingLoad.id,
+            Department.department,
+            Program.program_name,
+            User.first_name,
+            User.last_name,
+            YearSemester.school_year,
+            YearSemester.semester,
+            PaymentScheme.payment_name,
+            PaymentAssignment.payment_plan,
+            PaymentAssignment.total_amount
+        ).order_by(
+            PaymentAssignment.assigned_at.desc()
         ).all()
 
-        if not submitted_subjects:
-            return jsonify({
-                "message": "No pending subjects found for approval",
-                "count": 0
-            }), 200
+        result = [{
+            'id': payment.id,
+            'department': payment.department,
+            'program_name': payment.program_name,
+            'submitted_by': f"{payment.first_name} {payment.last_name}",
+            'subject_count': payment.subject_count,
+            'year_semester': f"{payment.semester} Sem {payment.school_year}",
+            'scheme_name': payment.payment_name,
+            'payment_plan': payment.payment_plan,
+            'total_amount': payment.total_amount
+        } for payment in assigned_payments]
 
-        approved_count = 0
-        for subject in submitted_subjects:
-            try:
-                subject.approved_denied = "True"
-                approved_count += 1
-
-                new_notification = Notification(
-                    professor_id=subject.professor_id,
-                    subject_code=subject.subject_code,
-                    subject_name=subject.subject_name,
-                    department=subject.department,
-                    year_level=subject.year_level,
-                    lecture=subject.lecture,
-                    com_lab=subject.com_lab,
-                    laboratory=subject.laboratory,
-                    school_lecture=subject.school_lecture,
-                    clinic=subject.clinic,
-                    subject_type=subject.subject_type,
-                    subject_nstp=subject.subject_nstp,
-                    status="Approved",
-                    approved_by=approved_by,
-                    comment="Bulk approved",
-                    reg_fee=subject.reg_fee if subject.reg_fee is not None else 0.0,
-                    misc_fee=subject.misc_fee if subject.misc_fee is not None else 0.0,
-                    affi_fee=subject.affi_fee if subject.affi_fee is not None else 0.0
-                )
-
-                db.session.add(new_notification)
-            except Exception as e:
-                db.session.rollback()
-                print(f"Error approving subject {subject.id}: {str(e)}")
-                continue
-
-        db.session.commit()
-        return jsonify({
-            "message": f"Successfully approved {approved_count} subjects",
-            "count": approved_count,
-            "professor_id": professor_id
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in approve_all_subjects: {str(e)}")
-        return jsonify({
-            "error": "Failed to approve subjects",
-            "details": str(e)
-        }), 500
-
-@app.route('/deny_subject', methods=['POST'])
-def deny_subject():
-    data = request.json
-
-    # Required fields validation
-    required_fields = ['id', 'professor_id', 'subject_code', 'comment']
-    if not all(key in data for key in required_fields):
-        return jsonify({"error": "Missing required fields"}), 400
-
-    # Find the subject to deny
-    subject = SubmittedSubject.query.get(data['id'])
-    if not subject:
-        return jsonify({"error": "Subject not found"}), 404
-
-    try:
-        # Update the subject status directly in SubmittedSubjects table
-        subject.status = "Denied"
-        subject.comment = data['comment']
-        subject.approved_denied = True
-        subject.assigned = False
-
-        # Create notification record
-        new_notification = Notification(
-            professor_id=data['professor_id'],
-            subject_code=subject.subject_code,
-            subject_name=subject.subject_name,
-            department=subject.department,
-            year_level=subject.year_level,
-            lecture=subject.lecture,
-            com_lab=subject.com_lab,
-            laboratory=subject.laboratory,
-            school_lecture=subject.school_lecture,
-            clinic=subject.clinic,
-            subject_type=subject.subject_type,
-            subject_nstp=subject.subject_nstp,
-            status="Denied",
-            approved_by="Registrar",
-            comment=data['comment'],
-            reg_fee=subject.reg_fee if subject.reg_fee is not None else 0,
-            misc_fee=subject.misc_fee if subject.misc_fee is not None else 0,
-            affi_fee=subject.affi_fee if subject.affi_fee is not None else 0,
-        )
-
-        db.session.add(new_notification)
-        db.session.commit()
-
-        # Return minimal success response
-        return jsonify({
-            "success": True,
-            "message": "Subject denied successfully",
-            "subject_id": subject.id
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error denying subject {data['id']}: {str(e)}")
-        return jsonify({
-            "error": "Failed to deny subject",
-            "details": str(e)
-        }), 500
-
-
-@app.route('/get_notifications', methods=['GET'])
-def get_notifications():
-    try:
-        # Fetch notifications that are approved by Registrar
-        notifications = Notification.query.filter(Notification.approved_by == "Registrar").all()
-        notification_list = []
-
-
-        # Create a list of dictionaries representing each notification
-        for notification in notifications:
-            notification_list.append({
-                "id": notification.id,
-                "professor_id": notification.professor_id,
-                "subject_code": notification.subject_code,
-                "subject_name": notification.subject_name,
-                "department": notification.department,
-                "year_level": notification.year_level,
-                "status": notification.status,
-                "comment": notification.comment,
-                "lecture": notification.lecture,
-                "com_lab": notification.com_lab,
-                "laboratory": notification.laboratory,
-                "school_lecture": notification.school_lecture,
-                "clinic": notification.clinic,
-                "subject_type": notification.subject_type,
-                "subject_nstp": notification.subject_nstp
-            })
-
-        return jsonify(notification_list), 200  # Return the list of notifications with 200 OK status
-    except Exception as e:
-        print("Failed to fetch notifications", e)
-        return jsonify({"error": "Failed to fetch notification data"}), 500  # Return 500 Internal Server Error
-
-@app.route('/get_notifications_dean', methods=['GET'])
-def get_notifications_dean():
-    try:
-        notifications = Notification.query.filter(Notification.approved_by == "Finance").all()
-        notification_list = []
-
-        for notification in notifications:
-            notification_list.append({
-                "id": notification.id,
-                "professor_id": notification.professor_id,
-                "subject_code": notification.subject_code,
-                "subject_name": notification.subject_name,
-                "department": notification.department,
-                "year_level": notification.year_level,
-                "status": notification.status,
-                "lecture": notification.lecture,
-                "com_lab": notification.com_lab,
-                "laboratory": notification.laboratory,
-                "school_lecture": notification.school_lecture,
-                "clinic": notification.clinic,
-                "subject_type": notification.subject_type,
-                "subject_nstp": notification.subject_nstp
-            })
-
-
-        return jsonify(notification_list), 200
-    except Exception as e:
-        print("Failed to fetch notification", e)
-        return jsonify({"error": "Failed to fetch notification data"}), 500
-
-@app.route("/assign_payments", methods=['POST'])
-def assign_payments():
-    data = request.json
-
-    # Validate incoming payload
-    if not data or 'professor_id' not in data or 'scheme_id' not in data or 'payment_plan' not in data or 'subjects' not in data:
-        return jsonify({"error": "Missing required fields: professor_id, scheme_id, payment_plan, or subjects"}), 400
-
-    professor_id = data['professor_id']
-    scheme_id = data['scheme_id']
-    payment_plan = data['payment_plan']
-    subject_codes = data['subjects']
-
-    try:
-        # Get the payment scheme details - using session.get() instead of query.get()
-        scheme = db.session.get(PaymentScheme, scheme_id)
-        if not scheme:
-            return jsonify({"error": "Payment scheme not found"}), 404
-
-        results = []
-        for subject_code in subject_codes:
-            if not subject_code:
-                results.append({
-                    "subject_code": "unknown",
-                    "status": "failed",
-                    "error": "Subject code not provided"
-                })
-                continue
-
-            subject = SubmittedSubject.query.filter_by(subject_code=subject_code).first()
-            if not subject:
-                results.append({
-                    "subject_code": subject_code,
-                    "status": "failed",
-                    "error": "Subject not found"
-                })
-                continue
-
-            # Update the subject with payment information
-            subject.payment_scheme = scheme_id
-            subject.payment_plan = payment_plan
-            subject.assigned = True
-            subject.status = "Payment Assigned"
-
-            # Create notification with only the fields that exist in the model
-            new_notification = Notification(
-                professor_id=professor_id,
-                subject_code=subject.subject_code,
-                subject_name=subject.subject_name,
-                department=subject.department,
-                year_level=subject.year_level,
-                status="Payment Assigned",
-                approved_by="Finance",
-                payment_scheme=scheme_id,
-                payment_plan=payment_plan,
-                lecture=subject.lecture,
-                com_lab=subject.com_lab,
-                laboratory=subject.laboratory,
-                school_lecture=subject.school_lecture,
-                clinic=subject.clinic,
-                subject_type=subject.subject_type,
-                subject_nstp=subject.subject_nstp,
-                reg_fee=scheme.regular_fees or 0,
-                misc_fee=scheme.misc_fees or 0,
-                affi_fee=scheme.aff_fee or 0
-                # Removed lecture_fee, com_lab_fee, etc. as they were causing errors
-            )
-
-            db.session.add(new_notification)
-            results.append({
-                "subject_code": subject_code,
-                "status": "success"
-            })
-
-        db.session.commit()
-
-        return jsonify({
-            "message": "Payments successfully assigned",
-            "results": results,
-            "professor_id": professor_id
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error assigning payments: {str(e)}")
-        return jsonify({"error": "Failed to assign payments", "details": str(e)}), 500
-
-@app.route("/get_assigned_payments", methods=['GET'])  # Changed to plural to match frontend
-def get_assigned_payments():  # Renamed function to match route
-    professor_id = request.args.get('professor_id')
-
-    if not professor_id:
-        return jsonify({"error": "professor_id parameter is required"}), 400
-
-    try:
-        # Get all notifications for this professor with payment assignments
-        notifications = db.session.query(Notification).filter(
-            Notification.professor_id == professor_id,
-            Notification.payment_scheme.isnot(None)
-        ).all()
-
-        if not notifications:
-            return jsonify({"error": "No payment assignments found for this professor"}), 404
-
-        # Group notifications by payment scheme and plan
-        assignments = {}
-        for notification in notifications:
-            key = f"{notification.payment_scheme}-{notification.payment_plan}"
-            if key not in assignments:
-                assignments[key] = {
-                    "scheme_id": notification.payment_scheme,
-                    "plan": notification.payment_plan,
-                    "subjects": []
-                }
-
-            assignments[key]["subjects"].append({
-                "subject_code": notification.subject_code,
-                "subject_name": notification.subject_name,
-                "lecture": notification.lecture,
-                "com_lab": notification.com_lab,
-                "laboratory": notification.laboratory,
-                "school_lecture": notification.school_lecture,
-                "clinic": notification.clinic,
-                "subject_nstp": notification.subject_nstp,
-                "status": notification.status
-            })
-
-        # Get scheme details for each assignment
-        results = []
-        for assignment in assignments.values():
-            scheme = db.session.get(PaymentScheme, assignment["scheme_id"])
-            if not scheme:
-                continue  # Skip if scheme not found
-
-            results.append({
-                "scheme": {
-                    "id": scheme.id,
-                    "payment_name": scheme.payment_name,
-                    "regular_fees": scheme.regular_fees,
-                    "misc_fees": scheme.misc_fees,
-                    "com_lab_fee": scheme.com_lab_fee,
-                    "laboratory_fee": scheme.laboratory_fee,
-                    "school_lecture_fee": scheme.school_lecture_fee,
-                    "clinic_fee": scheme.clinic_fee,
-                    "aff_fee": scheme.aff_fee,
-                    "tuition_fee": scheme.tuition_fee,
-                    "unit_fee": scheme.unit_fee
-                },
-                "plan": assignment["plan"],
-                "subjects": assignment["subjects"]
-            })
-
-        if not results:
-            return jsonify({"error": "No valid payment assignments found"}), 404
-
-        return jsonify(results), 200
+        return jsonify({'success': True, 'assigned_payments': result})
 
     except Exception as e:
         app.logger.error(f"Error fetching assigned payments: {str(e)}")
-        return jsonify({"error": "Failed to fetch assigned payments", "details": str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/assign-payment', methods=['POST'])
+def assign_payment():
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+        data = request.json
+        batch_id = data['batch_id']
+        scheme_id = data['payment_scheme_id']
+        plan = data['payment_plan']
+
+        teaching_load = db.session.get(TeachingLoad, batch_id)
+        scheme = db.session.get(PaymentScheme, scheme_id)
+
+        if not teaching_load or not scheme:
+            return jsonify({'success': False, 'error': 'Invalid batch or scheme'}), 400
+
+        subjects = teaching_load.subjects
+
+        # Fee calculations
+        tuition_fee = nstp_fee = com_lab_fee = laboratory_fee = school_lecture_fee = clinic_fee = 0
+
+        for subj in subjects:
+            subject_obj = db.session.get(Subject, subj.subject_id)
+            if not subject_obj:
+                continue
+
+            if subject_obj.is_nstp:
+                nstp_fee += subj.total_units * scheme.unit_fee
+            else:
+                tuition_fee += subj.total_units * scheme.tuition_fee
+
+            com_lab_fee += subj.com_lab_hours * scheme.com_lab_fee
+            laboratory_fee += subj.laboratory_hours * scheme.laboratory_fee  # Fixed typo here
+            school_lecture_fee += subj.school_lecture_hours * scheme.school_lecture_fee  # Fixed typo here
+            clinic_fee += subj.clinic_hours * scheme.clinic_fee
+
+        total = (
+            scheme.regular_fees +
+            scheme.misc_fees +
+            scheme.lab_fees +
+            scheme.rle_fees +
+            scheme.aff_fee +
+            tuition_fee + nstp_fee +
+            com_lab_fee + laboratory_fee +
+            school_lecture_fee + clinic_fee
+        )
+
+        breakdown = {
+            'regular_fees': scheme.regular_fees,
+            'misc_fees': scheme.misc_fees,
+            'lab_fees': scheme.lab_fees,
+            'rle_fees': scheme.rle_fees,
+            'aff_fee': scheme.aff_fee,
+            'tuition_fee': tuition_fee,
+            'nstp_fee': nstp_fee,
+            'com_lab_fee': com_lab_fee,
+            'laboratory_fee': laboratory_fee,
+            'school_lecture_fee': school_lecture_fee,
+            'clinic_fee': clinic_fee
+        }
+
+        assignment = PaymentAssignment(
+            teaching_load_id=batch_id,
+            payment_scheme_id=scheme_id,
+            payment_plan=plan,
+            total_amount=total,
+            breakdown=breakdown,
+            assigned_at=datetime.now(UTC),
+            assigned_by=session['user_id']
+        )
+
+        db.session.add(assignment)
+        teaching_load.finance_status = 'approved'
+        db.session.commit()
+
+        log_important_action("Payment assigned", f"Batch ID: {batch_id} with scheme: {scheme.payment_name}")
+        return jsonify({'success': True, 'message': 'Payment successfully assigned!'})
+
+    except Exception as e:
+        app.logger.error(f"Error assigning payment: {str(e)}")
+        return jsonify({'success': False, 'error': 'Error assigning payment'}), 400
+
+@app.route('/get_assigned_payment_details/<int:batch_id>', methods=['GET'])
+def get_assigned_payment_details(batch_id):
+    try:
+        # Get the payment assignment details
+        payment_assignment = db.session.query(
+            PaymentAssignment,
+            PaymentScheme,
+            User,
+            TeachingLoad,
+            Program,
+            Department,
+            YearSemester
+        ).join(
+            PaymentScheme, PaymentAssignment.payment_scheme_id == PaymentScheme.id
+        ).join(
+            User, PaymentAssignment.assigned_by == User.id
+        ).join(
+            TeachingLoad, PaymentAssignment.teaching_load_id == TeachingLoad.id
+        ).join(
+            Program, TeachingLoad.program_id == Program.id
+        ).join(
+            Department, Program.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).filter(
+            PaymentAssignment.teaching_load_id == batch_id
+        ).first()
+
+        if not payment_assignment:
+            return jsonify({'success': False, 'message': 'Payment assignment not found'}), 404
+
+        # Unpack the query result
+        assignment, scheme, user, teaching_load, program, department, year_semester = payment_assignment
+
+        # Get all subjects in this batch
+        subjects = db.session.query(
+            TeachingLoadSubject,
+            Subject
+        ).join(
+            Subject, TeachingLoadSubject.subject_id == Subject.id
+        ).filter(
+            TeachingLoadSubject.teaching_load_id == batch_id
+        ).all()
+
+        # Prepare subjects data
+        subjects_data = []
+        for load_subject, subject in subjects:
+            subjects_data.append({
+                'subject_code': subject.subject_code,
+                'subject_name': subject.subject_name,
+                'total_units': load_subject.total_units,
+                'lecture': load_subject.lecture_hours,
+                'com_lab': load_subject.com_lab_hours,
+                'laboratory': load_subject.laboratory_hours,
+                'school_lecture': load_subject.school_lecture_hours,
+                'clinic': load_subject.clinic_hours,
+                'subject_type': subject.subject_type.name if subject.subject_type else 'N/A',
+                'is_nstp': subject.is_nstp
+            })
+
+        # Calculate totals from subjects
+        total_com_lab_units = sum(subj['com_lab'] for subj in subjects_data)
+        total_lab_units = sum(subj['laboratory'] for subj in subjects_data)
+        total_cl_units = sum(subj['school_lecture'] for subj in subjects_data)
+        total_c_units = sum(subj['clinic'] for subj in subjects_data)
+
+        # Calculate tuition and NSTP units
+        tuition_units = 0
+        nstp_units = 0
+        for subj in subjects_data:
+            if subj['is_nstp']:
+                nstp_units += subj['total_units']
+            else:
+                tuition_units += subj['total_units']
+
+        # Calculate fees based on scheme
+        total_com_lab_fee = total_com_lab_units * (scheme.com_lab_fee or 0)
+        total_lab_fee = total_lab_units * (scheme.laboratory_fee or 0)
+        total_cl_fee = total_cl_units * (scheme.school_lecture_fee or 0)
+        total_c_fee = total_c_units * (scheme.clinic_fee or 0)
+        total_tuition_fee = tuition_units * (scheme.tuition_fee or 0)
+        total_nstp_fee = nstp_units * (scheme.unit_fee or 0)
+
+        regular_total = scheme.regular_fees or 0
+        misc_total = scheme.misc_fees or 0
+        aff_total = scheme.aff_fee or 0
+
+        subtotal = (
+            regular_total +
+            misc_total +
+            total_com_lab_fee +
+            total_lab_fee +
+            total_cl_fee +
+            total_c_fee +
+            aff_total +
+            total_tuition_fee +
+            total_nstp_fee
+        )
+
+        # Calculate payment plan breakdown
+        breakdown = {
+            'plan': assignment.payment_plan,
+            'subtotal': subtotal,
+            'total': assignment.total_amount
+        }
+
+        if assignment.payment_plan == 'cash':
+            discount = subtotal * 0.05
+            breakdown['discount'] = discount
+            breakdown['total_to_pay'] = subtotal - discount
+        elif assignment.payment_plan == 'planA':
+            downpayment = 500
+            breakdown['downpayment'] = downpayment
+            breakdown['remaining'] = subtotal - downpayment
+        elif assignment.payment_plan == 'planB':
+            downpayment = regular_total + misc_total
+            breakdown['downpayment'] = downpayment
+            breakdown['remaining'] = subtotal - downpayment
+            breakdown['monthly_payment'] = breakdown['remaining'] / 4
+
+        # Prepare the response
+        response = {
+            'success': True,
+            'payment_details': {
+                'id': assignment.id,
+                'batch_id': assignment.teaching_load_id,
+                'payment_scheme': {
+                    'id': scheme.id,
+                    'payment_name': scheme.payment_name,
+                    'regular_fees': regular_total,
+                    'misc_fees': misc_total,
+                    'com_lab_fee': scheme.com_lab_fee,
+                    'laboratory_fee': scheme.laboratory_fee,
+                    'school_lecture_fee': scheme.school_lecture_fee,
+                    'clinic_fee': scheme.clinic_fee,
+                    'aff_fee': aff_total,
+                    'tuition_fee': scheme.tuition_fee,
+                    'unit_fee': scheme.unit_fee
+                },
+                'payment_plan': assignment.payment_plan,
+                'assigned_at': assignment.assigned_at.isoformat(),
+                'assigned_by': f"{user.first_name} {user.last_name}",
+                'department': department.department,
+                'program_name': program.program_name,
+                'submitted_by': teaching_load.submitted_by_user.first_name + " " + teaching_load.submitted_by_user.last_name,
+                'year_semester': f"{year_semester.semester} Sem {year_semester.school_year}",
+                'subject_count': len(subjects_data),
+                'subjects': subjects_data,
+                'breakdown': breakdown,
+                'totals': {
+                    'regular_fees': regular_total,
+                    'misc_fees': misc_total,
+                    'com_lab_fee': total_com_lab_fee,
+                    'laboratory_fee': total_lab_fee,
+                    'school_lecture_fee': total_cl_fee,
+                    'clinic_fee': total_c_fee,
+                    'aff_fee': aff_total,
+                    'tuition_fee': total_tuition_fee,
+                    'nstp_fee': total_nstp_fee,
+                    'subtotal': subtotal,
+                    'total': assignment.total_amount
+                },
+                'units': {
+                    'com_lab': total_com_lab_units,
+                    'laboratory': total_lab_units,
+                    'school_lecture': total_cl_units,
+                    'clinic': total_c_units,
+                    'tuition': tuition_units,
+                    'nstp': nstp_units
+                }
+            }
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        app.logger.error(f"Error fetching payment details: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # =============================================
 # Payment Scheme Routes
 # =============================================
@@ -896,6 +1462,7 @@ def create_payment_scheme():
         db.session.add(new_scheme)
         db.session.commit()
 
+        log_important_action("Payment scheme created", f"{data['payment_name']}")
         return jsonify({'message': 'Payment scheme created successfully', 'id': new_scheme.id}), 201
 
     except Exception as e:

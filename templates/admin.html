@@ -22,103 +22,1661 @@
   <!-- Lucide Icons -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
 
-  <!-- Swiper CSS & JS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
   <style>
-    .swiper-button-next, .swiper-button-prev {
-      color: #4B76F6;
+    .active-nav-item {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-left: 4px solid #4B76F6;
     }
-    .swiper-pagination-bullet-active {
-      background-color: #4B76F6;
+    .content-container {
+      display: none;
+    }
+    .content-container.active {
+      display: block;
     }
   </style>
 </head>
 
-<body class="bg-gray-50 min-h-screen flex flex-col">
-  <!-- HEADER -->
-  <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-      <h1 class="text-xl font-bold text-white">Admin Dashboard</h1>
+<body class="bg-gray-50 min-h-screen flex">
+  <!-- SIDEBAR -->
+  <div class="w-64 min-h-screen bg-navy text-white fixed">
+    <div class="p-4 border-b border-gray-700">
+      <h1 class="text-xl font-bold">Admin Portal</h1>
     </div>
-  </header>
+    <nav class="p-4">
+      <ul class="space-y-2">
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition active-nav-item" data-target="auditLogs">
+            <i data-lucide="file-text" class="w-5 h-5"></i>
+            Audit Logs
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="manageUsers">
+            <i data-lucide="users" class="w-5 h-5"></i>
+            Manage Users
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="manageDepartment">
+            <i data-lucide="building-2" class="w-5 h-5"></i>
+            Manage Department
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="manageProgram">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+            Manage Program
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="manageSubjectType">
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+            Manage Subject Type
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="subjectMasterFile">
+            <i data-lucide="book-marked" class="w-5 h-5"></i>
+            Subject Master File
+          </a>
+        </li>
+        <li>
+          <a href="#" class="nav-link flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition" data-target="schoolYearSemester">
+            <i data-lucide="calendar" class="w-5 h-5"></i>
+            School Year/Semester
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
 
   <!-- MAIN CONTENT -->
-  <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-    <!-- Add Subject Form -->
-    <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
-      <div class="p-6">
-        <div class="mb-4 flex items-center gap-3">
-          <i data-lucide="book-open" class="h-6 w-6 text-action"></i>
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">Add Subject</h2>
-            <p class="text-sm text-gray-500">Add a new subject to the system</p>
+  <div class="flex-1 ml-64">
+    <!-- HEADER -->
+    <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+        <h1 class="text-xl font-bold text-white" id="pageTitle">Dean's Dashboard</h1>
+        <div class="flex items-center gap-4">
+          <!-- User Info Dropdown -->
+          <div class="relative group">
+            <button class="flex items-center gap-2 text-white">
+              <i data-lucide="user-circle" class="h-6 w-6"></i>
+              <span class="hidden md:inline" id="userEmail"></span>
+              <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-hover:rotate-180"></i>
+            </button>
+
+            <!-- Dropdown Content -->
+            <div class="absolute right-0 mt-2 w-64 origin-top-right scale-0 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 transition-all group-hover:scale-100">
+              <div class="px-4 py-2">
+                <p class="text-sm font-medium text-gray-900" id="userName"></p>
+                <p class="text-xs text-gray-500" id="userEmailDropdown"></p>
+                <!-- Role Display (shown for all users) -->
+                <p class="text-xs font-medium text-gray-700 mt-1">
+                  Role: <span class="capitalize" id="userRole"></span>
+                </p>
+              </div>
+
+              <!-- Department Info (shown for dean/program-head) -->
+              <div id="departmentInfo" class="hidden border-t border-gray-100 px-4 py-2">
+                <p class="text-xs text-gray-500">Department</p>
+                <p class="text-sm font-medium text-gray-700" id="departmentName"></p>
+              </div>
+
+              <!-- Programs Info (shown only for program-head) -->
+              <div id="programsInfo" class="hidden border-t border-gray-100 px-4 py-2">
+                <p class="text-xs text-gray-500">Assigned Programs</p>
+                <ul class="text-sm text-gray-700 space-y-1" id="programsList"></ul>
+              </div>
+
+              <div class="border-t border-gray-100">
+                <button id="logoutBtn" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                  Sign out
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <form id="subjectForm">
-          <label class="block text-sm font-medium text-gray-700">Subject Code:</label>
-          <input type="text" id="subject_code" required class="input-field">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Subject Name:</label>
-          <input type="text" id="subject_name" required class="input-field">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Year Level:</label>
-          <select id="year_level" required class="input-field">
-            <option value="">Select a Year</option>
-            <option value="1st year">1st year</option>
-            <option value="2nd year">2nd year</option>
-            <option value="3rd year">3rd year</option>
-            <option value="4th year">4th year</option>
-          </select>
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Department:</label>
-          <select id="department" required class="input-field">
-            <option value="">Select a Department</option>
-            <option value="BSIT">BSIT</option>
-            <option value="BSCS">BSCS</option>
-            <option value="BSHM">BSHM</option>
-          </select>
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Lecture:</label>
-          <input type="number" id="lecture" class="input-field" value="0">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Computer Laboratory:</label>
-          <input type="number" id="com_lab" class="input-field" value="0">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Laboratory:</label>
-          <input type="number" id="laboratory" class="input-field" value="0">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">School Lecture:</label>
-          <input type="number" id="school_lecture" class="input-field" value="0">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Clinic:</label>
-          <input type="number" id="clinic" class="input-field" value="0">
-
-          <label class="block text-sm font-medium text-gray-700 mt-4">Subject Type:</label>
-          <select id="subject_type" required class="input-field">
-            <option value="">Select a Subject type</option>
-            <option value="Major/Professional Subject">Major/Professional Subject </option>
-            <option value="Minor/General Subject">Minor/General Subject</option>
-          </select>
-
-          <div class="mt-4 flex items-center hidden" id="nstpContainer">
-            <input type="checkbox" id="is_nstp" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="is_nstp" class="ml-2 text-sm font-medium text-gray-700">Is this an NSTP subject?</label>
-          </div>
-
-          <button type="submit" class="mt-4 bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition">Add Subject</button>
-        </form>
       </div>
-    </div>
+    </header>
 
-    <!-- Swiper Container for Department Tables -->
-    <div class="swiper mySwiper">
-      <div class="swiper-wrapper" id="departmentTablesContainer"></div>
-      <div class="swiper-pagination"></div>
-    </div>
-  </main>
 
+    <!-- MAIN CONTENT -->
+    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+      <!-- Audit Logs Content -->
+      <div id="auditLogs" class="content-container active">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="file-text" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Audit Logs</h2>
+                <p class="text-sm text-gray-500">View system activity logs</p>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP address</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr>
+                  </tr>
+                  <tr>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Users Content -->
+      <div id="manageUsers" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="users" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Manage Users</h2>
+                <p class="text-sm text-gray-500">Create, update, and manage system users</p>
+              </div>
+            </div>
+            <div class="mb-4 flex justify-between items-center">
+              <div class="relative w-64">
+                <input type="text" id="searchUser" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <i data-lucide="search" class="absolute left-3 top-2.5 text-gray-400"></i>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200" id="usersTable">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="usersTableBody">
+                  <!-- User rows will be injected here by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Department Content -->
+      <div id="manageDepartment" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="building-2" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Manage Departments</h2>
+                <p class="text-sm text-gray-500">Create and manage departments</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="col-span-1">
+                <h3 class="text-md font-medium mb-4">Add New Department</h3>
+                <form>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Department Code</label>
+                    <input type="text" name="department_code" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  </div>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+                    <input type="text" name="department" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  </div>
+                  <button type="submit" class="w-full bg-action hover:bg-action-hover text-white font-medium py-2 px-4 rounded-lg transition">Add Department</button>
+                </form>
+              </div>
+              <div class="col-span-2">
+                <h3 class="text-md font-medium mb-4">Existing Departments</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="departmentTableBody" class="bg-white divide-y divide-gray-200">
+                      <tr>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Program Content -->
+      <div id="manageProgram" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="layers" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Manage Programs</h2>
+                <p class="text-sm text-gray-500">Create and manage academic programs</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="col-span-1">
+                <h3 class="text-md font-medium mb-4">Add New Program</h3>
+                <form>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Program Code</label>
+                    <input type="text" name="program_code" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  </div>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Program Name</label>
+                    <input type="text" name="program_name" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  </div>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <select id="department" name="department" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Select Department</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="w-full bg-action hover:bg-action-hover text-white font-medium py-2 px-4 rounded-lg transition">Add Program</button>
+                </form>
+              </div>
+              <div class="col-span-2">
+                <h3 class="text-md font-medium mb-4">Existing Programs</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="programTableBody" class="bg-white divide-y divide-gray-200">
+                      <tr>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Subject Type Content -->
+      <div id="manageSubjectType" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="book-open" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Manage Subject Types</h2>
+                <p class="text-sm text-gray-500">Create and manage subject types</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="col-span-1">
+                <h3 class="text-md font-medium mb-4">Add New Subject Type</h3>
+                <form id="subjectTypeForm">
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject Type Name</label>
+                    <input type="text" id="subjectTypeInput" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  </div>
+                  <button type="submit" class="w-full bg-action hover:bg-action-hover text-white font-medium py-2 px-4 rounded-lg transition">Add Subject Type</button>
+                </form>
+              </div>
+              <div class="col-span-2">
+                <h3 class="text-md font-medium mb-4">Existing Subject Types</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="subjectTypesTableBody" class="bg-white divide-y divide-gray-200">
+                      <tr>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject Master File Content -->
+      <div id="subjectMasterFile" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="book-marked" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Subject Master File</h2>
+                <p class="text-sm text-gray-500">Manage all subjects in the system</p>
+              </div>
+            </div>
+
+            <!-- Button to Open Modal -->
+            <button id="showAddSubjectBtn" class="bg-action hover:bg-action-hover text-white font-medium py-2 px-4 rounded-lg transition mb-4">
+              Add Subject
+            </button>
+
+            <!-- Swiper Container -->
+            <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+              <div class="swiper mySwiper">
+                <div class="swiper-wrapper" id="departmentTablesContainer"></div>
+                <div class="swiper-pagination"></div>
+              </div>
+            </main>
+
+            <!-- Modal for Add Subject Form -->
+            <div id="addSubjectModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+              <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative">
+                <!-- Close Button -->
+                <button id="closeAddSubjectModal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+
+                <div class="mb-4 flex items-center gap-3">
+                  <i data-lucide="book-open" class="h-6 w-6 text-action"></i>
+                  <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Add Subject</h2>
+                    <p class="text-sm text-gray-500">Add a new subject to the system</p>
+                  </div>
+                </div>
+
+                <!-- Form Content -->
+                <form id="subjectForm">
+                  <label class="block text-sm font-medium text-gray-700">Subject Code:</label>
+                  <input type="text" id="subject_code" required class="input-field">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Subject Name:</label>
+                  <input type="text" id="subject_name" required class="input-field">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Year Level:</label>
+                  <select id="year_level" required class="input-field">
+                    <option value="">Select a Year</option>
+                    <option value="1st year">1st year</option>
+                    <option value="2nd year">2nd year</option>
+                    <option value="3rd year">3rd year</option>
+                    <option value="4th year">4th year</option>
+                  </select>
+
+                  <label for="department" class="block text-sm font-medium text-gray-700 mt-4">Department:</label>
+                  <select id="department_id" required class="input-field">
+                    <option value="">Select a Department</option>
+                  </select>
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Lecture:</label>
+                  <input type="number" id="lecture" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Computer Laboratory:</label>
+                  <input type="number" id="com_lab" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Laboratory:</label>
+                  <input type="number" id="laboratory" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">CL:</label>
+                  <input type="number" id="school_lecture" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">C:</label>
+                  <input type="number" id="clinic" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Subject Type:</label>
+                  <select id="subject_type" required class="input-field">
+                    <option value="">Select a Subject type</option>
+                  </select>
+
+                  <div class="mt-4 flex items-center">
+                    <input type="checkbox" id="is_nstp" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="is_nstp" class="ml-2 text-sm font-medium text-gray-700">Is this an NSTP subject?</label>
+                  </div>
+
+                  <button type="submit" class="mt-4 bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition">Add Subject</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="schoolYearSemester" class="content-container">
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+          <div class="p-6">
+            <div class="mb-4 flex items-center gap-3">
+              <i data-lucide="calendar" class="h-6 w-6 text-action"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">School Year/Semester</h2>
+                <p class="text-sm text-gray-500">Manage academic periods</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="col-span-1">
+                <h3 class="text-md font-medium mb-4">Add New School Year</h3>
+                <form id="yearSemesterForm">
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">School Year</label>
+                    <input type="text" id="schoolYearInput" placeholder="e.g. 2023-2024" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                  </div>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                    <select id="semesterSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                      <option value="">Select Semester</option>
+                      <option value="1st Semester">1st Semester</option>
+                      <option value="2nd Semester">2nd Semester</option>
+                      <option value="Mid Year">Mid Year</option>
+                    </select>
+                  </div>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="statusSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                      <option value="Inactive">Inactive</option>
+                      <option value="Active">Active</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="w-full bg-action hover:bg-action-hover text-white font-medium py-2 px-4 rounded-lg transition">Add School Year</button>
+                </form>
+              </div>
+              <div class="col-span-2">
+                <h3 class="text-md font-medium mb-4">Current and Past School Years</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School Year</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="yearSemesterTableBody" class="bg-white divide-y divide-gray-200">
+                      <!-- Dynamic content will be inserted here by JavaScript -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  // admin.js - Main JavaScript for Admin Portal
+
+  document.addEventListener('DOMContentLoaded', function () {
+
+    const showModalBtn = document.getElementById('showAddSubjectBtn');
+    const modal = document.getElementById('addSubjectModal');
+    const closeModalBtn = document.getElementById('closeAddSubjectModal');
+
+    if (showModalBtn && modal && closeModalBtn) {
+      showModalBtn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      });
+
+      closeModalBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      });
+
+      // Close modal when clicking outside the modal content
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }
+      });
+    }
+  });
+
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // ======================
+    // NAVIGATION FUNCTIONALITY
+    // ======================
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const contentContainers = document.querySelectorAll('.content-container');
+    const pageTitle = document.getElementById('pageTitle');
+
+    // Set first nav item as active by default
+    const defaultActiveLink = document.querySelector('.nav-link[data-target="auditLogs"]');
+    if (defaultActiveLink) {
+      defaultActiveLink.classList.add('active-nav-item');
+    }
+
+    // Navigation click handler
+    navLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        // Get target container ID
+        const targetId = this.getAttribute('data-target');
+
+        // Update active nav item styling
+        navLinks.forEach(navLink => {
+          navLink.classList.remove('active-nav-item');
+        });
+        this.classList.add('active-nav-item');
+
+        // Hide all content containers
+        contentContainers.forEach(container => {
+          container.classList.remove('active');
+        });
+
+        // Show target container
+        const targetContainer = document.getElementById(targetId);
+        if (targetContainer) {
+          targetContainer.classList.add('active');
+
+          // Update page title based on nav item text
+          const navText = this.textContent.trim();
+          pageTitle.textContent = navText;
+        }
+      });
+    });
+
+    // ======================
+    // GENERAL FORM HANDLING
+    // ======================
+
+    // Add event listeners to all delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('Are you sure you want to delete this item?')) {
+          // Here you would typically make an  call to delete the item
+          console.log('Delete item:', this.dataset.id);
+          // Then remove the row from the table
+          this.closest('tr').remove();
+        }
+      });
+    });
+
+    // ======================
+    // SEARCH FUNCTIONALITY
+    // ======================
+
+    const searchInputs = document.querySelectorAll('input[type="text"][placeholder^="Search"]');
+    searchInputs.forEach(input => {
+      input.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const table = this.closest('.rounded-lg').querySelector('table');
+
+        if (table) {
+          const rows = table.querySelectorAll('tbody tr');
+
+          rows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            if (rowText.includes(searchTerm)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        }
+      });
+    });
+
+    // ======================
+    // MODAL FUNCTIONALITY
+    // ======================
+
+    // This would be used if you add modals for edit/create operations
+    document.querySelectorAll('[data-modal-toggle]').forEach(button => {
+      button.addEventListener('click', function() {
+        const modalId = this.getAttribute('data-modal-toggle');
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.toggle('hidden');
+        }
+      });
+    });
+
+    // Close modal when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.add('hidden');
+        }
+      });
+    });
+
+    // ======================
+    // HELPER FUNCTIONS
+    // ======================
+
+    // Format date for display
+    function formatDate(dateString) {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+
+    // Initialize any date fields
+    document.querySelectorAll('.date-input').forEach(input => {
+      if (!input.value) {
+        input.value = new Date().toISOString().split('T')[0];
+      }
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('#manageDepartment form');
+    const tbody = document.getElementById('departmentTableBody');
+    let isEditing = false;
+    let editingId = null;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const department_code = form.department_code.value.trim();
+      const department = form.department.value.trim();
+
+      if (!department_code || !department) {
+        return alert('Fill in all fields.');
+      }
+
+      if (isEditing && editingId !== null) {
+        const response = await fetch(`/update_department/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ department_code, department }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          form.reset();
+          isEditing = false;
+          editingId = null;
+          loadDepartments();
+        } else {
+          alert(result.message);
+        }
+      } else {
+        const response = await fetch('/add_department', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ department_code, department }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          form.reset();
+          loadDepartments();
+        } else {
+          alert(result.message);
+        }
+      }
+    });
+
+    async function loadDepartments() {
+      const response = await fetch('/get_departments');
+      const departments = await response.json();
+      tbody.innerHTML = '';
+
+      departments.forEach(dept => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${dept.department_code}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${dept.department}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-x-2">
+            <button class="text-blue-600 hover:underline" data-id="${dept.id}" data-code="${dept.department_code}" data-name="${dept.department}" onclick="editDepartment(this)">Edit</button>
+            <button class="text-red-600 hover:underline" data-id="${dept.id}" onclick="deleteDepartment(this)">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Expose edit/delete functions globally
+    window.editDepartment = (btn) => {
+      const id = btn.getAttribute('data-id');
+      const code = btn.getAttribute('data-code');
+      const name = btn.getAttribute('data-name');
+
+      form.department_code.value = code;
+      form.department.value = name;
+      isEditing = true;
+      editingId = id;
+    };
+
+    window.deleteDepartment = async (btn) => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Are you sure you want to delete this department?')) return;
+
+      const response = await fetch(`/delete_department/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        loadDepartments();
+      } else {
+        alert(result.message);
+      }
+    };
+
+    loadDepartments();
+  });
+
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('#manageProgram form');
+    const departmentSelect = form.querySelector('#department');
+    const tbody = document.getElementById('programTableBody');
+    let editing = false;
+    let editingId = null;
+
+    // Load departments for <select>
+    async function loadDepartments() {
+      const response = await fetch('/get_departments');
+      const departments = await response.json();
+
+      departmentSelect.innerHTML = '<option value="">Select Department</option>';
+      departments.forEach(dept => {
+        const opt = document.createElement('option');
+        opt.value = dept.id;
+        opt.textContent = dept.department;
+        departmentSelect.appendChild(opt);
+      });
+    }
+
+    // Load existing programs
+    async function loadPrograms() {
+      const response = await fetch('/get_programs');
+      const programs = await response.json();
+      tbody.innerHTML = '';
+
+      programs.forEach(prog => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${prog.program_code}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${prog.program_name}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${prog.department_name}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-x-2">
+            <button class="text-blue-600 hover:underline" onclick='editProgram(${JSON.stringify(prog)})'>Edit</button>
+            <button class="text-red-600 hover:underline" onclick='deleteProgram(${prog.id})'>Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Submit form
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const program_code = form.program_code.value.trim();
+      const program_name = form.program_name.value.trim();
+      const department_id = form.department.value;
+
+      if (!program_code || !program_name || !department_id) {
+        return alert('Fill in all fields.');
+      }
+
+      const payload = { program_code, program_name, department_id };
+
+      const url = editing ? `/update_program/${editingId}` : '/add_program';
+      const method = editing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        form.reset();
+        editing = false;
+        editingId = null;
+        await loadPrograms();
+      } else {
+        alert(result.message || 'Something went wrong.');
+      }
+    });
+
+    // Edit program
+    window.editProgram = (prog) => {
+      form.program_code.value = prog.program_code;
+      form.program_name.value = prog.program_name;
+
+      // Find department option by name
+      [...departmentSelect.options].forEach(option => {
+        if (option.text === prog.department) {
+          departmentSelect.value = option.value;
+        }
+      });
+
+      editing = true;
+      editingId = prog.id;
+    };
+
+    // Delete program
+    window.deleteProgram = async (id) => {
+      if (!confirm('Are you sure you want to delete this program?')) return;
+
+      const response = await fetch(`/delete_program/${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.success) {
+        await loadPrograms();
+      } else {
+        alert(result.message);
+      }
+    };
+
+    loadDepartments();
+    loadPrograms();
+  });
+
+// ======================
+// YEAR/SEMESTER MANAGEMENT
+// ======================
+
+// Function to fetch year/semester data from the backend
+async function fetchYearSemesters() {
+  try {
+    const response = await fetch('/year-semester');
+    if (!response.ok) {
+      throw new Error('Failed to fetch year/semester data');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching year/semester data:', error);
+    return [];
+  }
+}
+
+// Function to populate the year/semester table
+async function loadYearSemesters() {
+  try {
+    const yearSemesters = await fetchYearSemesters();
+    const tableBody = document.getElementById('yearSemesterTableBody');
+
+    // Clear existing rows
+    tableBody.innerHTML = '';
+
+    // Add new rows
+    yearSemesters.forEach(entry => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${entry.school_year}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.semester}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+            ${entry.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+            ${entry.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button class="toggle-status-btn text-blue-600 hover:text-blue-900 mr-3" data-id="${entry.id}">
+            ${entry.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+          <button class="delete-btn text-red-600 hover:text-red-900" data-id="${entry.id}"
+            ${entry.is_active ? 'disabled' : ''}>
+            Delete
+          </button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+
+    // Add event listeners to the new buttons
+    addYearSemesterButtonListeners();
+  } catch (error) {
+    console.error('Error loading year/semester data:', error);
+    alert('Failed to load year/semester data');
+  }
+}
+
+// Function to add a new year/semester
+async function addYearSemester(schoolYear, semester, isActive) {
+  try {
+    const response = await fetch('/year-semester', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        school_year: schoolYear,
+        semester: semester,
+        is_active: isActive
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add year/semester');
+    }
+
+    // Refresh the table
+    await loadYearSemesters();
+
+    // Show success message
+    alert('Year/Semester added successfully!');
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding year/semester:', error);
+    alert('Failed to add year/semester');
+    throw error;
+  }
+}
+
+// Function to toggle year/semester status
+async function toggleYearSemesterStatus(id) {
+  try {
+    const response = await fetch(`/year-semester/${id}/toggle`, {
+      method: 'PUT'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to toggle year/semester status');
+    }
+
+    // Refresh the table
+    await loadYearSemesters();
+
+    // Show success message
+    alert('Year/Semester status updated successfully!');
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error toggling year/semester status:', error);
+    alert('Failed to toggle year/semester status');
+    throw error;
+  }
+}
+
+// Function to delete a year/semester
+async function deleteYearSemester(id) {
+  try {
+    const response = await fetch(`/year-semester/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete year/semester');
+    }
+
+    // Refresh the table
+    await loadYearSemesters();
+
+    // Show success message
+    alert('Year/Semester deleted successfully!');
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting year/semester:', error);
+    alert('Failed to delete year/semester');
+    throw error;
+  }
+}
+
+// Add event listeners to year/semester buttons
+function addYearSemesterButtonListeners() {
+  // Toggle status buttons
+  document.querySelectorAll('.toggle-status-btn').forEach(button => {
+    button.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const id = this.getAttribute('data-id');
+      await toggleYearSemesterStatus(id);
+    });
+  });
+
+  // Delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const id = this.getAttribute('data-id');
+
+      if (confirm('Are you sure you want to delete this year/semester?')) {
+        await deleteYearSemester(id);
+      }
+    });
+  });
+}
+
+// Handle year/semester form submission
+document.querySelector('#yearSemesterForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const schoolYear = document.getElementById('schoolYearInput').value;
+  const semester = document.getElementById('semesterSelect').value;
+  const isActive = document.getElementById('statusSelect').value === 'Active';
+
+  try {
+    await addYearSemester(schoolYear, semester, isActive);
+
+    // Reset the form
+    this.reset();
+  } catch (error) {
+    console.error('Error in form submission:', error);
+  }
+});
+
+// Initialize when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  loadYearSemesters();
+});
+
+
+// ============ SUBJECT TYPE MANAGEMENT ============
+
+// Fetch all subject types
+async function fetchSubjectTypes() {
+  try {
+    const response = await fetch('/subject-types');
+    if (!response.ok) throw new Error('Failed to fetch subject types');
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// Render subject types in the table
+async function loadSubjectTypes() {
+  const tableBody = document.querySelector('#subjectTypesTableBody');
+  tableBody.innerHTML = '';
+
+  const types = await fetchSubjectTypes();
+  types.forEach(type => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${type.id}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${type.name}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" data-id="${type.id}">Edit</a>
+        <a href="#" class="text-red-600 hover:text-red-900 delete-subject-type" data-id="${type.id}">Delete</a>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  addDeleteListeners();
+}
+
+// Add new subject type
+document.querySelector('#subjectTypeForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const input = document.querySelector('#subjectTypeInput');
+  const name = input.value.trim();
+
+  if (!name) return alert('Please enter a subject type name.');
+
+  try {
+    const res = await fetch('/subject-types', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name })
+    });
+
+    if (!res.ok) throw new Error('Failed to add subject type');
+    input.value = '';
+    await loadSubjectTypes();
+  } catch (error) {
+    console.error(error);
+    alert('Error adding subject type');
+  }
+});
+
+// Delete subject type
+function addDeleteListeners() {
+  document.querySelectorAll('.delete-subject-type').forEach(button => {
+    button.addEventListener('click', async function (e) {
+      e.preventDefault();
+      const id = this.dataset.id;
+
+      if (!confirm('Are you sure you want to delete this subject type?')) return;
+
+      try {
+        const res = await fetch(`//subject-types/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete subject type');
+        await loadSubjectTypes();
+      } catch (error) {
+        console.error(error);
+        alert('Error deleting subject type');
+      }
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', loadSubjectTypes);
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const addSubjectModal = document.getElementById('addSubjectModal');
+  const showAddSubjectBtn = document.getElementById('showAddSubjectBtn');
+  const closeAddSubjectModal = document.getElementById('closeAddSubjectModal');
+  const subjectForm = document.getElementById('subjectForm');
+  const departmentSelect = document.getElementById('department_id');
+  const subjectTypeSelect = document.getElementById('subject_type');
+
+  // Show modal
+  showAddSubjectBtn.addEventListener('click', () => {
+    addSubjectModal.classList.remove('hidden');
+    addSubjectModal.classList.add('flex');
+  });
+
+  // Close modal
+  closeAddSubjectModal.addEventListener('click', () => {
+    addSubjectModal.classList.add('hidden');
+    addSubjectModal.classList.remove('flex');
+    subjectForm.reset();
+  });
+
+  async function loadDepartments() {
+    try {
+      const res = await fetch('/get_departments_subject');
+      if (!res.ok) throw new Error('Failed to load departments');
+      const departments = await res.json();
+
+      departmentSelect.innerHTML = '<option value="">Select a Department</option>';
+      departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.id;
+        option.textContent = dept.department;
+        departmentSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  }
+
+  async function loadSubjectTypes() {
+    try {
+      const res = await fetch('/subject-types');
+      if (!res.ok) throw new Error('Failed to load subject types');
+      const types = await res.json();
+
+      subjectTypeSelect.innerHTML = '<option value="">Select a Subject type</option>';
+      types.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.id;
+        option.textContent = type.name;
+        subjectTypeSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error('Error loading subject types:', error);
+    }
+  }
+
+  subjectForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const data = {
+      subject_code: document.getElementById('subject_code').value.trim(),
+      subject_name: document.getElementById('subject_name').value.trim(),
+      year_level: document.getElementById('year_level').value,
+      department_id: departmentSelect.value,
+      lecture: parseInt(document.getElementById('lecture').value) || 0,
+      com_lab: parseInt(document.getElementById('com_lab').value) || 0,
+      laboratory: parseInt(document.getElementById('laboratory').value) || 0,
+      school_lecture: parseInt(document.getElementById('school_lecture').value) || 0,
+      clinic: parseInt(document.getElementById('clinic').value) || 0,
+      subject_type_id: subjectTypeSelect.value,
+      is_nstp: document.getElementById('is_nstp').checked
+    };
+
+    if (!data.subject_code || !data.subject_name || !data.year_level || !data.department_id || !data.subject_type_id) {
+      alert('Please fill all required fields.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/add_subject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        alert('Subject added successfully!');
+        subjectForm.reset();
+        addSubjectModal.classList.add('hidden');
+        addSubjectModal.classList.remove('flex');
+
+        await loadSubjectsByDepartment();  // 🔄 Reload table contents
+      } else {
+        alert(result.message || 'Error adding subject');
+      }
+    } catch (error) {
+      alert('Network error or server error');
+      console.error('Submit error:', error);
+    }
+  });
+
+  loadDepartments();
+  loadSubjectTypes();
+  loadSubjectsByDepartment(); // 🔄 Initial load on page
+});
+
+
+// Input styling
+const inputClass = "border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5";
+document.querySelectorAll('.input-field').forEach(el => el.className = inputClass);
+
+
+// Load and display department-subject tables
+async function loadSubjectsByDepartment() {
+  try {
+    const res = await fetch('/subjects_by_department');
+    if (!res.ok) throw new Error('Failed to load subjects');
+
+    const data = await res.json();
+    const container = document.getElementById('departmentTablesContainer');
+    container.innerHTML = '';
+
+    data.departments.forEach(dept => {
+      const slide = document.createElement('div');
+      slide.className = 'swiper-slide p-4';
+
+      let tableHTML = `
+        <div class="rounded border border-gray-200 bg-white p-4 shadow-sm">
+          <h3 class="text-lg font-semibold mb-2">${dept.name}</h3>
+          <table class="w-full table-auto text-sm text-left text-gray-700">
+            <thead class="bg-gray-100 text-xs uppercase text-gray-600">
+              <tr>
+                <th class="px-3 py-2">Code</th>
+                <th class="px-3 py-2">Name</th>
+                <th class="px-3 py-2">Year</th>
+                <th class="px-3 py-2">lecture</th>
+                <th class="px-3 py-2">Comp Lab</th>
+                <th class="px-3 py-2">Laboratory</th>
+                <th class="px-3 py-2">CL</th>
+                <th class="px-3 py-2">C</th>
+                <th class="px-3 py-2">Type</th>
+                <th class="px-3 py-2">NSTP</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      dept.subjects.forEach(subject => {
+        tableHTML += `
+          <tr class="border-t">
+            <td class="px-3 py-2">${subject.subject_code}</td>
+            <td class="px-3 py-2">${subject.subject_name}</td>
+            <td class="px-3 py-2">${subject.year_level}</td>
+            <td class="px-3 py-2">${subject.lecture}</td>
+            <td class="px-3 py-2">${subject.comb_lab}</td>
+            <td class="px-3 py-2">${subject.laboratory}</td>
+            <td class="px-3 py-2">${subject.school_lecture}</td>
+            <td class="px-3 py-2">${subject.clinic}</td>
+            <td class="px-3 py-2">${subject.subject_type}</td>
+            <td class="px-3 py-2">${subject.is_nstp ? 'Yes' : 'No'}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += `</tbody></table></div>`;
+      slide.innerHTML = tableHTML;
+      container.appendChild(slide);
+    });
+
+    // Initialize or update Swiper
+    if (window.mySwiper) {
+      window.mySwiper.update();
+    } else {
+      window.mySwiper = new Swiper('.mySwiper', {
+        slidesPerView: 1,
+        spaceBetween: 30,
+        pagination: { el: '.swiper-pagination', clickable: true },
+      });
+    }
+  } catch (error) {
+    console.error('Error loading department subjects:', error);
+  }
+}
+
+// Fetch and display users from backend
+async function loadUsers() {
+  try {
+    const res = await fetch("/users");
+    const data = await res.json();
+
+    if (data.success) {
+      const usersTableBody = document.getElementById("usersTableBody");
+      usersTableBody.innerHTML = ''; // Clear existing rows
+
+      data.users.forEach(user => {
+        const row = document.createElement('tr');
+
+        // Create table cells
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="ml-2">
+                <div class="text-sm font-medium text-gray-900">${user.first_name} ${user.last_name}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.email}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.user_type}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+              ${user.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+        `;
+        usersTableBody.appendChild(row);
+      });
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    alert("An error occurred while fetching users.");
+  }
+}
+
+// Load users when the page loads
+document.addEventListener("DOMContentLoaded", loadUsers);
+
+document.getElementById('logoutBtn').addEventListener('click', function() {
+  // Clear any client-side storage
+  localStorage.clear();
+  sessionStorage.clear();
+
+  fetch('/logout')
+    .then(response => {
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else {
+        alert("Logout failed.");
+      }
+    })
+    .catch(error => {
+      console.error("Logout error:", error);
+      alert("An error occurred during logout.");
+    });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
+  lucide.createIcons();
+
+  // Fetch user data
+  fetch('/current_user')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.user) {
+        const user = data.user;
+
+        // Set basic user info that everyone sees
+        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('userEmailDropdown').textContent = user.email;
+        document.getElementById('userName').textContent = `${user.first_name} ${user.last_name}`;
+
+        // Set user role - This is the key fix
+        document.getElementById('userRole').textContent = user.user_type.toLowerCase();
+
+        // Get references to all info sections
+        const departmentInfo = document.getElementById('departmentInfo');
+        const departmentName = document.getElementById('departmentName');
+        const programsInfo = document.getElementById('programsInfo');
+        const programsList = document.getElementById('programsList');
+
+        // Clear existing programs
+        programsList.innerHTML = '';
+
+        // Role-based display logic
+        switch(user.user_type.toLowerCase()) {
+          case 'admin':
+            // Admin only shows email (default state)
+            departmentInfo.classList.add('hidden');
+            programsInfo.classList.add('hidden');
+            break;
+
+          case 'dean':
+            // Dean shows email and department
+            if (user.department) {
+              departmentName.textContent = `${user.department.name} (${user.department.code})`;
+              departmentInfo.classList.remove('hidden');
+            }
+            programsInfo.classList.add('hidden');
+            break;
+
+          case 'program-head':
+            // Program head shows email, department, and programs
+            if (user.department) {
+              departmentName.textContent = `${user.department.name} (${user.department.code})`;
+              departmentInfo.classList.remove('hidden');
+            }
+
+            if (user.programs && user.programs.length > 0) {
+              user.programs.forEach(program => {
+                const li = document.createElement('li');
+                li.className = 'py-1';
+                li.textContent = `${program.name} (${program.code})`;
+                programsList.appendChild(li);
+              });
+              programsInfo.classList.remove('hidden');
+            }
+            break;
+
+          default:
+            // Default case (shouldn't happen)
+            departmentInfo.classList.add('hidden');
+            programsInfo.classList.add('hidden');
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching user data:', error);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const auditLogsContainer = document.getElementById('auditLogs');
+    const logsTableBody = auditLogsContainer.querySelector('tbody');
+
+    // Format date in GMT+8 (Philippine Time)
+    function formatGMT8(isoString) {
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'Asia/Manila'
+        };
+        return new Date(isoString).toLocaleString('en-PH', options);
+    }
+
+    // Fetch audit logs
+    async function fetchAuditLogs(page = 1) {
+        try {
+            const response = await fetch(`/api/audit-logs?page=${page}`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderAuditLogs(data.logs);
+                renderPagination(data);
+            } else {
+                showAlert('Error loading logs: ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'error');
+        }
+    }
+
+    // Render logs in table
+    function renderAuditLogs(logs) {
+        logsTableBody.innerHTML = '';
+
+        if (!logs || logs.length === 0) {
+            logsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                        No activity logs found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${formatGMT8(log.timestamp)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${log.user || 'System'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${log.action}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${
+                    log.status === 'success' ? 'text-green-600' : 'text-red-600'
+                }">
+                    ${log.message || log.status}
+                </td>
+            `;
+
+            row.addEventListener('click', () => showLogDetails(log));
+            logsTableBody.appendChild(row);
+        });
+    }
+
+    // Show log details modal with GMT+8 time
+    function showLogDetails(log) {
+        const modalHtml = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Log Details</h3>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                                <i data-lucide="x" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-500">Timestamp (GMT+8)</p>
+                                    <p class="text-sm">${formatGMT8(log.timestamp)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">User</p>
+                                    <p class="text-sm">${log.user || 'System'}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm text-gray-500">Action</p>
+                                <p class="text-sm">${log.action}</p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm text-gray-500">Status</p>
+                                <p class="text-sm ${log.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                                    ${log.status}
+                                </p>
+                            </div>
+
+                            ${log.ip_address ? `
+                            <div>
+                                <p class="text-sm text-gray-500">IP Address</p>
+                                <p class="text-sm">${log.ip_address}</p>
+                            </div>` : ''}
+
+                            ${log.metadata ? `
+                            <div>
+                                <p class="text-sm text-gray-500">Details</p>
+                                <pre class="text-sm bg-gray-50 p-2 rounded overflow-auto">${JSON.stringify(JSON.parse(log.metadata), null, 2)}</pre>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        refreshLucideIcons();
+    }
+
+    // Rest of the code remains the same...
+    function renderPagination(data) {
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'px-6 py-4 flex items-center justify-between border-t border-gray-200';
+
+        if (data.pages <= 1) return;
+
+        paginationContainer.innerHTML = `
+            <div class="flex-1 flex justify-between items-center">
+                <button
+                    ${data.current_page === 1 ? 'disabled' : ''}
+                    onclick="fetchAuditLogs(${data.current_page - 1})"
+                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${data.current_page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}">
+                    Previous
+                </button>
+                <div class="text-sm text-gray-700">
+                    Page ${data.current_page} of ${data.pages}
+                </div>
+                <button
+                    ${data.current_page === data.pages ? 'disabled' : ''}
+                    onclick="fetchAuditLogs(${data.current_page + 1})"
+                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${data.current_page === data.pages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}">
+                    Next
+                </button>
+            </div>
+        `;
+
+        const existingPagination = auditLogsContainer.querySelector('.pagination-container');
+        if (existingPagination) existingPagination.remove();
+
+        const container = document.createElement('div');
+        container.className = 'pagination-container';
+        container.appendChild(paginationContainer);
+        auditLogsContainer.querySelector('.rounded-lg').appendChild(container);
+    }
+
+    // Initial fetch
+    fetchAuditLogs();
+    window.fetchAuditLogs = fetchAuditLogs;
+});
+
+function refreshLucideIcons() {
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+function showAlert(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
 <script src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>

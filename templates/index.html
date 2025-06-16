@@ -31,13 +31,51 @@
 </head>
 
 <body class="bg-gray-50 min-h-screen flex flex-col">
-    <!-- HEADER -->
-    <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-            <h1 class="text-xl font-bold text-white">Dean's Dashboard</h1>
-        </div>
+  <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+      <h1 class="text-xl font-bold text-white" id="pageTitle">Dean's Dashboard</h1>
+      <div class="flex items-center gap-4">
+        <!-- User Info Dropdown -->
+        <div class="relative group">
+          <button class="flex items-center gap-2 text-white">
+            <i data-lucide="user-circle" class="h-6 w-6"></i>
+            <span class="hidden md:inline" id="userEmail"></span>
+            <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-hover:rotate-180"></i>
+          </button>
 
-    </header>
+          <!-- Dropdown Content -->
+          <div class="absolute right-0 mt-2 w-64 origin-top-right scale-0 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 transition-all group-hover:scale-100">
+            <div class="px-4 py-2">
+              <p class="text-sm font-medium text-gray-900" id="userName"></p>
+              <p class="text-xs text-gray-500" id="userEmailDropdown"></p>
+              <!-- Role Display (shown for all users) -->
+              <p class="text-xs font-medium text-gray-700 mt-1">
+                Role: <span class="capitalize" id="userRole"></span>
+              </p>
+            </div>
+
+            <!-- Department Info (shown for dean/program-head) -->
+            <div id="departmentInfo" class="hidden border-t border-gray-100 px-4 py-2">
+              <p class="text-xs text-gray-500">Department</p>
+              <p class="text-sm font-medium text-gray-700" id="departmentName"></p>
+            </div>
+
+            <!-- Programs Info (shown only for program-head) -->
+            <div id="programsInfo" class="hidden border-t border-gray-100 px-4 py-2">
+              <p class="text-xs text-gray-500">Assigned Programs</p>
+              <ul class="text-sm text-gray-700 space-y-1" id="programsList"></ul>
+            </div>
+
+            <div class="border-t border-gray-100">
+              <button id="logoutBtn" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
 
     <!-- NOTIFICATION -->
     <div id="notification"
@@ -58,12 +96,17 @@
                       </div>
                   </div>
 
-                  <select id="departmentSelect"
+                  <select id="yearSemesterSelect"
                       class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
-                      <option value="">Select a Department</option>
+                      <option value="">Select Year/Semester</option>
                   </select>
 
-                  <select id="yearSelect"
+                  <select id="programSelect"
+                      class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
+                      <option value="">Select Program</option>
+                  </select>
+
+                  <select id="yearLevelSelect"
                       class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
                       <option value="">Select Year Level</option>
                   </select>
@@ -151,133 +194,777 @@
         </div>
 
         <!-- Saved Subjects Batches Container -->
-       <div id="savedSubjectsBatches" class="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
-           <div class="p-6">
-               <div class="relative">
-                   <div class="overflow-x-auto pr-8">
-                       <div class="flex items-center gap-3">
-                           <i data-lucide="bookmark" class="h-6 w-6 text-action"></i>
-                           <div>
-                               <h2 class="text-lg font-semibold text-gray-900">Saved Subjects Batches</h2>
-                               <p class="text-sm text-gray-500">Click on a batch to view subjects you have saved for submission.</p>
-                           </div>
-                       </div>
-                       <div id="savedBatchesContainer" class="flex gap-4 w-max max-w-full"></div>
-                   </div>
+        <div id="savedSubjectsBatches" class="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div class="p-6">
+                <div class="mb-4 flex items-center gap-3">
+                    <i data-lucide="bookmark" class="h-6 w-6 text-action"></i>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Saved Subjects Batches</h2>
+                        <p class="text-sm text-gray-500">Click on a batch to view subjects you have saved for submission.</p>
+                    </div>
+                </div>
+
+                <!-- Add this container for the batch cards -->
+                <div id="savedBatchesContainer" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <!-- Batch cards will be loaded here -->
+                    <div class="text-gray-500 py-4">No saved batches yet</div>
+                </div>
+            </div>
+        </div>
+       <!-- Add this modal at the bottom of your HTML -->
+       <div id="batchSubjectsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+           <div class="bg-white rounded-lg shadow-lg p-6 w-2/3 max-h-[80vh] overflow-y-auto">
+               <div class="flex justify-between items-center mb-4">
+                   <h3 class="text-lg font-semibold" id="batchModalTitle"></h3>
+                   <button onclick="closeBatchModal()" class="text-gray-500 hover:text-gray-700">
+                       <i data-lucide="x" class="h-5 w-5"></i>
+                   </button>
+               </div>
+               <div class="overflow-x-auto">
+                 <table class="w-full text-left text-sm text-gray-700">
+                  <thead>
+                      <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                          <th class="p-3 font-medium border" colspan="4"></th>
+                          <th class="p-3 text-center font-medium border" colspan="2">LAB</th>
+                          <th class="p-3 text-center font-medium border" colspan="2">RLE</th>
+                          <th class="p-3 font-medium border" colspan="1"></th>
+                      </tr>
+                      <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                          <th class="p-3 font-medium border">Subject Code</th>
+                          <th class="p-3 font-medium border">Subject Name</th>
+                          <th class="p-3 text-center font-medium border">Total Units</th>
+                          <th class="p-3 text-center font-medium border">Lecture</th>
+                          <th class="p-3 text-center font-medium border">Comp Lab</th>
+                          <th class="p-3 text-center font-medium border">Lab</th>
+                          <th class="p-3 text-center font-medium border">CL</th>
+                          <th class="p-3 text-center font-medium border">C</th>
+                          <th class="p-3 text-center font-medium border">Type</th>
+                      </tr>
+                  </thead>
+                  <tbody id="batchSubjectsTable">
+                      <!-- Subjects will be loaded here -->
+                  </tbody>
+                </table>
+               </div>
+               <div class="mt-4 flex justify-end">
                </div>
            </div>
        </div>
 
-        <!-- Professor Name Modal -->
-        <div id="professorModal"
-            class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg shadow-lg p-6 w-1/3">
-                <h3 class="text-lg font-semibold mb-4">Enter Professor Name</h3>
-                <input type="text" id="professorName" placeholder="Professor Name"
-                    class="w-full border border-gray-300 p-2 rounded-md" />
-                <div class="mt-4 flex justify-end">
-                    <button class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
-                        onclick="closeProfessorModal()">Cancel</button>
-                    <button id="confirmSave"
-                        class="ml-2 px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md">Confirm</button>
-                </div>
+       <!-- Processed Payment Container -->
+       <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
+         <div class="p-6">
+           <div class="mb-6 flex items-center gap-3">
+             <i data-lucide="check-circle" class="h-6 w-6 text-green-500"></i>
+             <div>
+               <h2 class="text-lg font-semibold text-gray-900">Processed Payments</h2>
+               <p class="text-sm text-gray-500">
+                 Subjects that have been assigned payment schemes.
+               </p>
+             </div>
+           </div>
+           <div class="overflow-x-auto">
+             <table class="w-full text-left text-sm text-gray-700">
+               <thead>
+                 <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                   <th class="p-3 font-medium">Department</th>
+                   <th class="p-3 font-medium">Program</th>
+                   <th class="p-3 font-medium">Submitted By</th>
+                   <th class="p-3 font-medium">Subject Count</th>
+                   <th class="p-3 font-medium">Year</th>
+                   <th class="p-3 font-medium">Status</th>
+                   <th class="p-3 font-medium text-right">Actions</th>
+                 </tr>
+               </thead>
+               <tbody id="assignedTableBody">
+                 <tr id="noAssignedRow">
+                   <td colspan="7" class="py-8 text-center text-gray-500">
+                     Loading processed payments...
+                   </td>
+                 </tr>
+               </tbody>
+             </table>
+           </div>
+         </div>
+       </div>
+
+       <!-- Payment Details Modal -->
+       <div id="paymentDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto py-10 px-4 flex items-start justify-center">
+         <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative">
+           <button onclick="closePaymentDetailsModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+           <h2 class="text-2xl font-semibold">Payment Details</h2>
+           <div id="paymentDetailsContent" class="text-gray-700 whitespace-pre-wrap text-sm">
+           </div>
+         </div>
+       </div>
+
+        <!-- Denied Status -->
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div class="p-6">
+            <div class="mb-6 flex items-center gap-3">
+              <i data-lucide="thumbs-down" class="h-6 w-6 text-red-600"></i>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Denied Subject Offerings</h2>
+                <p class="text-sm text-gray-500">View all denied subject offerings with reasons.</p>
+              </div>
             </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-gray-700">
+                <thead>
+                  <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="p-3 font-medium">Department</th>
+                    <th class="p-3 font-medium">Programs</th>
+                    <th class="p-3 font-medium">Submitted by</th>
+                    <th class="p-3 font-medium">Year</th>
+                    <th class="p-3 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="deniedTable">
+                  <tr>
+                    <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Denial Reason Modal -->
+      <div id="denialReasonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden flex flex-col">
+          <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold text-gray-800">Denial Details</h3>
+            <button onclick="closeDenialReasonModal()" class="text-gray-500 hover:text-gray-800">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+          <div class="p-6">
+            <div class="mb-4">
+              <h4 class="text-sm font-medium text-gray-500">Reason for Denial</h4>
+              <p id="denialReasonText" class="mt-1 text-sm text-gray-900"></p>
+            </div>
+          </div>
+          <div class="flex justify-between items-center p-4 border-t">
+            <button onclick="closeDenialReasonModal()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md text-sm font-medium">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+  </main>
+<script>
 
 
-        <!-- Approved Subjects Section -->
-        <div class="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div class="p-6">
-                <div class="mb-6 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <i data-lucide="check-circle" class="h-6 w-6 text-green-500"></i>
-                        <div>
-                            <h2 class="text-lg font-semibold text-gray-900">Approved Subjects</h2>
-                            <p class="text-sm text-gray-500">Subjects that have been approved by the registrar.</p>
+// Update the save button handler to allow multiple saves
+document.getElementById('saveButton').addEventListener('click', async function() {
+  if (selectedSubjects.length === 0) {
+    alert('Please select at least one subject before saving');
+    return;
+  }
+
+  const yearSemesterId = document.getElementById('yearSemesterSelect').value;
+  const programId = document.getElementById('programSelect').value;
+
+  if (!yearSemesterId || !programId) {
+    alert('Please select both year/semester and program before saving');
+    return;
+  }
+
+  // Prepare complete subject data for saving
+  const data = {
+    year_semester_id: yearSemesterId,
+    program_id: programId,
+    subjects: selectedSubjects.map(subject => ({
+      id: subject.id,
+      subject_code: subject.code,
+      subject_name: subject.name,
+      lecture_hours: subject.lecture,
+      com_lab_hours: subject.com_lab,
+      laboratory_hours: subject.laboratory,
+      school_lecture_hours: subject.school_lecture,
+      clinic_hours: subject.clinic,
+      total_units: subject.total_units,
+      subject_type: subject.subject_type,
+      is_nstp: subject.is_nstp
+    }))
+  };
+
+  try {
+    const response = await fetch('/save_teaching_load', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showNotification('Subjects saved successfully!');
+      // Don't clear selectedSubjects to allow multiple saves
+      updateSelectedSubjectsTable();
+      loadSavedBatches(); // Refresh the saved batches list
+    } else {
+      alert('Failed to save: ' + (result.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to save subjects');
+  }
+});
+
+async function loadSavedBatches() {
+    try {
+        const response = await fetch('/get_saved_batches');
+        const data = await response.json();
+
+        const container = document.getElementById('savedBatchesContainer');
+        container.innerHTML = '';
+
+        if (data.success && data.batches.length > 0) {
+            data.batches.forEach(batch => {
+                // Define a color-coded badge based on status
+                let statusBadge = '';
+                switch (batch.status) {
+                    case 'pending':
+                        statusBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pending</span>';
+                        break;
+                    case 'submitted':
+                        statusBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Submitted</span>';
+                        break;
+                }
+
+                const batchCard = document.createElement('div');
+                batchCard.className = 'flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow';
+                batchCard.onclick = () => openBatchModal(
+                    batch.id,
+                    batch.program_name,
+                    batch.program_code,
+                    batch.year_semester,
+                    batch.status === 'submitted'
+                );
+
+                batchCard.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-medium text-gray-900">${batch.program_name}</h3>
+                                <p class="text-sm text-gray-500">${batch.year_semester}</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs text-gray-500">${batch.submitted_by}</p>
+                            <p class="text-xs text-gray-500">${batch.user_role} • ${new Date(batch.submission_date).toLocaleDateString()}</p>
                         </div>
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-700">
-                        <thead>
-                          <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                            <th class="p-3 font-medium border" colspan="4"></th>
-                            <th class="p-3 text-center font-medium border" colspan="2">LAB</th>
-                            <th class="p-3 text-center font-medium border" colspan="2">RLE</th>
-                            <th class="p-3 font-medium border" colspan="2"></th>
-                          </tr>
-                            <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                              <th class="p-3 font-medium">Subject Code</th>
-                              <th class="p-3 font-medium">Subject Name</th>
-                              <th class="p-3 text-center font-medium">Total Units</th>
-                              <th class="p-3 font-medium">Lecture</th>
-                              <th class="p-3 font-medium">Computer Laboratory</th>
-                              <th class="p-3 font-medium">Laboratory</th>
-                              <th class="p-3 text-right font-medium">CL</th>
-                              <th class="p-3 text-right font-medium">C</th>
-                              <th class="p-3 text-center font-medium">Subject Type</th>
-                              <th class="p-3 text-right font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="approvedSubjectsTable">
-                            <tr>
-                                <td colspan="8" class="py-8 text-center text-gray-500">No approved subjects yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                `;
+                container.appendChild(batchCard);
+            });
+        } else {
+            container.innerHTML = '<div class="text-gray-500 py-4 col-span-3 text-center">No saved batches yet</div>';
+        }
+    } catch (error) {
+        console.error('Error loading saved batches:', error);
+        container.innerHTML = '<div class="text-red-500 py-4 col-span-3 text-center">Error loading saved batches</div>';
+    }
+}
 
-        <!-- Denied Subjects Section -->
-        <div class="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div class="p-6">
-                <div class="mb-6 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <i data-lucide="x-circle" class="h-6 w-6 text-red-500"></i>
-                        <div>
-                            <h2 class="text-lg font-semibold text-gray-900">Denied Subjects</h2>
-                            <p class="text-sm text-gray-500">Subjects that have been denied by the registrar.</p>
-                        </div>
+// Modified openBatchModal function with submit button
+function openBatchModal(batchId, programName, programCode, yearSemester, isSubmitted) {
+    fetch(`/get_batch_subjects/${batchId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modal = document.getElementById('batchSubjectsModal');
+                const tableBody = document.getElementById('batchSubjectsTable');
+                const modalTitle = document.getElementById('batchModalTitle');
+
+                // Set modal title
+                modalTitle.textContent = `${programName} (${programCode}) - ${yearSemester}`;
+
+                // Populate subjects table
+                tableBody.innerHTML = '';
+                data.subjects.forEach(subject => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-200 hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="p-3">${subject.subject_code}</td>
+                        <td class="p-3">${subject.subject_name}</td>
+                        <td class="p-3 text-center">${subject.total_units}</td>
+                        <td class="p-3 text-center">${subject.lecture}</td>
+                        <td class="p-3 text-center">${subject.com_lab}</td>
+                        <td class="p-3 text-center">${subject.laboratory}</td>
+                        <td class="p-3 text-center">${subject.school_lecture}</td>
+                        <td class="p-3 text-center">${subject.clinic}</td>
+                        <td class="p-3 text-center">${subject.subject_type}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Add submit button if batch is not already submitted
+                const modalFooter = document.createElement('div');
+                modalFooter.className = 'mt-4 flex justify-between';
+
+                modalFooter.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        ${isSubmitted ?
+                            '<span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Submitted</span>' :
+                            `<button onclick="deleteBatch(${batchId})" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
+                                Delete Batch
+                            </button>`
+                        }
+
+                        ${!isSubmitted ?
+                            `<button onclick="submitToRegistrar(${batchId})" class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md">
+                                Submit to Registrar
+                            </button>` :
+                            ''
+                        }
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-700">
-                        <thead>
-                          <tr class="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                            <th class="p-3 font-medium border" colspan="4"></th>
-                            <th class="p-3 text-center font-medium border" colspan="2">LAB</th>
-                            <th class="p-3 text-center font-medium border" colspan="2">RLE</th>
-                            <th class="p-3 font-medium border" colspan="2"></th>
-                          </tr>
-                            <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                              <th class="p-3 font-medium">Subject Code</th>
-                              <th class="p-3 font-medium">Subject Name</th>
-                              <th class="p-3 text-center font-medium">Total Units</th>
-                              <th class="p-3 font-medium">Lecture</th>
-                              <th class="p-3 font-medium">Computer Laboratory</th>
-                              <th class="p-3 font-medium">Laboratory</th>
-                              <th class="p-3 text-right font-medium">CL</th>
-                              <th class="p-3 text-right font-medium">C</th>
-                              <th class="p-3 text-center font-medium">Subject Type</th>
-                              <th class="p-3 text-right font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="deniedSubjectsTable">
-                            <tr>
-                                <td colspan="8" class="py-8 text-center text-gray-500">No denied subjects yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
+                `;
 
-    <script src="{{ url_for('static', filename='dean.js') }}"></script>
-    <script src="{{ url_for('static', filename='subjectmanagement.js') }}"></script>
-    <script src="{{ url_for('static', filename='batchmanagement.js') }}"></script>
-    <script src="{{ url_for('static', filename='subjectapproved.js') }}"></script>
+
+                // Clear previous footer if any
+                const existingFooter = modal.querySelector('.modal-footer');
+                if (existingFooter) {
+                    existingFooter.remove();
+                }
+
+                modalFooter.classList.add('modal-footer');
+                modal.querySelector('.mt-4').appendChild(modalFooter);
+
+                // Show modal
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading batch subjects:', error);
+            alert('Failed to load batch subjects');
+        });
+}
+
+function deleteBatch(batchId) {
+    if (confirm('Are you sure you want to delete this entire batch? This action cannot be undone.')) {
+        fetch(`/delete_batch/${batchId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Batch deleted successfully!');
+                closeBatchModal();
+                loadSavedBatches();
+            } else {
+                alert('Failed to delete batch: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting batch:', error);
+            alert('Failed to delete batch');
+        });
+    }
+}
+
+
+function submitToRegistrar(batchId) {
+    if (confirm('Are you sure you want to submit this batch to the registrar? You won\'t be able to make changes after submission.')) {
+        fetch(`/submit_batch/${batchId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Batch submitted to registrar successfully!');
+
+                // Clear modal table contents after submission
+                const tableBody = document.getElementById('batchSubjectsTable');
+                tableBody.innerHTML = '';
+
+                closeBatchModal();
+                loadSavedBatches(); // Refresh the list (batch subjects should be empty now)
+            } else {
+                alert('Failed to submit batch: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting batch:', error);
+            alert('Failed to submit batch');
+        });
+    }
+}
+
+
+
+function closeBatchModal() {
+    document.getElementById('batchSubjectsModal').classList.add('hidden');
+}
+
+// Call this when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Load initial data
+    loadSavedBatches();
+});
+
+// Update your save success handler to refresh the batches list
+function afterSuccessfulSave() {
+    showNotification('Subjects saved successfully!');
+    selectedSubjects = [];
+    updateSelectedSubjectsTable();
+    loadSavedBatches(); // Refresh the saved batches list
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+      fetch('/get_denied_batches')
+        .then(res => res.json())
+        .then(data => {
+          const table = document.getElementById('deniedTable');
+          table.innerHTML = '';
+
+          if (data.success && data.batches.length > 0) {
+            data.batches.forEach(batch => {
+              const row = document.createElement('tr');
+              row.classList.add("border-b");
+              row.innerHTML = `
+                <td class="p-3">${batch.department}</td>
+                <td class="p-3">${batch.program_name}</td>
+                <td class="p-3">${batch.submitted_by}</td>
+                <td class="p-3">${batch.year_semester}</td>
+                <td class="p-3 text-red-700">
+                <span onclick="showDenialReason('${batch.reason || ''}')" class="text-red-600 hover:underline cursor-pointer text-sm">
+                      View Reason
+                </span></td>
+              `;
+              table.appendChild(row);
+            });
+          } else {
+            table.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-400">No denied subject offerings found.</td></tr>`;
+          }
+        });
+    });
+
+    function showDenialReason(comment) {
+      const modal = document.getElementById('denialReasonModal');
+      document.getElementById('denialReasonText').textContent = comment || 'No reason provided';
+      modal.classList.remove('hidden');
+    }
+
+    function closeDenialReasonModal() {
+      document.getElementById('denialReasonModal').classList.add('hidden');
+    }
+
+    // Fetch and display processed payments
+    function fetchAssignedPayments() {
+      fetch('/get_assigned_payments')
+        .then(res => res.json())
+        .then(data => {
+          const tableBody = document.getElementById('assignedTableBody');
+          tableBody.innerHTML = '';
+
+          if (data.success && data.assigned_payments.length > 0) {
+            data.assigned_payments.forEach(payment => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td class="p-3">${payment.department}</td>
+                <td class="p-3">${payment.program_name}</td>
+                <td class="p-3">${payment.submitted_by}</td>
+                <td class="p-3 text-center">${payment.subject_count}</td>
+                <td class="p-3">${payment.year_semester}</td>
+                <td class="p-3">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Approved
+                  </span>
+                </td>
+                <td class="p-3 text-right">
+                  <button onclick="viewPaymentDetails(${payment.id})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors">
+                    View Details
+                  </button>
+                </td>
+              `;
+              tableBody.appendChild(row);
+            });
+          } else {
+            tableBody.innerHTML = `
+              <tr>
+                <td colspan="7" class="py-8 text-center text-gray-500">
+                  No subjects have been processed yet.
+                </td>
+              </tr>
+            `;
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching assigned payments:', error);
+          document.getElementById('assignedTableBody').innerHTML = `
+            <tr>
+              <td colspan="7" class="py-8 text-center text-red-500">
+                Error loading processed payments. Please try again.
+              </td>
+            </tr>
+          `;
+        });
+    }
+
+    // View payment details
+    function viewPaymentDetails(batchId) {
+      fetch(`/get_assigned_payment_details/${batchId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const modal = document.getElementById('paymentDetailsModal');
+            const content = document.getElementById('paymentDetailsContent');
+
+            // Extract the payment details
+            const payment = data.payment_details;
+            const scheme = payment.payment_scheme;
+            const plan = payment.payment_plan;
+            const subjects = payment.subjects;
+
+            // Calculate totals from subjects
+            let totalComLabUnits = 0;
+            let totalLabUnits = 0;
+            let totalCLUnits = 0;
+            let totalCUnits = 0;
+            let tuitionUnits = 0;
+            let nstpUnits = 0;
+            let totalUnits = 0;
+
+            // Create subject details table
+            let subjectTableHTML = `
+              <h3 class="text-lg font-semibold mb-4">Subject Details</h3>
+              <table class="w-full text-sm border mb-6">
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th class="p-2 border text-left">Code</th>
+                    <th class="p-2 border text-left">Name</th>
+                    <th class="p-2 border text-center">Units</th>
+                    <th class="p-2 border text-center">Lec</th>
+                    <th class="p-2 border text-center">CLab</th>
+                    <th class="p-2 border text-center">Lab</th>
+                    <th class="p-2 border text-center">SL</th>
+                    <th class="p-2 border text-center">C</th>
+                    <th class="p-2 border text-center">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+
+            subjects.forEach(subj => {
+              totalComLabUnits += subj.com_lab || 0;
+              totalLabUnits += subj.laboratory || 0;
+              totalCLUnits += subj.school_lecture || 0;
+              totalCUnits += subj.clinic || 0;
+              totalUnits += subj.total_units || 0;
+
+              if (subj.is_nstp) {
+                nstpUnits += subj.total_units || 0;
+              } else {
+                tuitionUnits += subj.total_units || 0;
+              }
+
+              subjectTableHTML += `
+                <tr class="border-b">
+                  <td class="p-2 border">${subj.subject_code}</td>
+                  <td class="p-2 border">${subj.subject_name}</td>
+                  <td class="p-2 border text-center">${subj.total_units}</td>
+                  <td class="p-2 border text-center">${subj.lecture}</td>
+                  <td class="p-2 border text-center">${subj.com_lab}</td>
+                  <td class="p-2 border text-center">${subj.laboratory}</td>
+                  <td class="p-2 border text-center">${subj.school_lecture}</td>
+                  <td class="p-2 border text-center">${subj.clinic}</td>
+                  <td class="p-2 border text-center">${subj.subject_type} ${subj.is_nstp ? '(NSTP)' : ''}</td>
+                </tr>
+              `;
+            });
+
+            subjectTableHTML += `
+                  <tr class="bg-gray-100 font-medium">
+                    <td colspan="2" class="p-2 border text-right">Total</td>
+                    <td class="p-2 border text-center">${totalUnits}</td>
+                    <td class="p-2 border text-center"></td>
+                    <td class="p-2 border text-center">${totalComLabUnits}</td>
+                    <td class="p-2 border text-center">${totalLabUnits}</td>
+                    <td class="p-2 border text-center">${totalCLUnits}</td>
+                    <td class="p-2 border text-center">${totalCUnits}</td>
+                    <td class="p-2 border text-center"></td>
+                  </tr>
+                </tbody>
+              </table>
+            `;
+
+            // Calculate fees based on scheme
+            const regularTotal = parseFloat(scheme.regular_fees) || 0;
+            const miscTotal = parseFloat(scheme.misc_fees) || 0;
+            const affTotal = parseFloat(scheme.aff_fee) || 0;
+
+            const totalComLabFee = totalComLabUnits * (parseFloat(scheme.com_lab_fee) || 0);
+            const totalLabFee = totalLabUnits * (parseFloat(scheme.laboratory_fee) || 0);
+            const totalCLFee = totalCLUnits * (parseFloat(scheme.school_lecture_fee) || 0);
+            const totalCFee = totalCUnits * (parseFloat(scheme.clinic_fee) || 0);
+            const totalTuitionFee = tuitionUnits * (parseFloat(scheme.tuition_fee) || 0);
+            const totalNSTPFee = nstpUnits * (parseFloat(scheme.unit_fee) || 0);
+
+            const subtotal = regularTotal + miscTotal + totalComLabFee + totalLabFee +
+                             totalCLFee + totalCFee + affTotal + totalTuitionFee + totalNSTPFee;
+
+            // Calculate payment plan breakdown
+            let breakdownHTML = '';
+            let totalToPay = subtotal;
+
+            switch (plan) {
+              case 'cash':
+                const discount = subtotal * 0.05;
+                totalToPay = subtotal - discount;
+                breakdownHTML = `
+                  <div class="space-y-2">
+                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between text-green-600"><span>5% Discount:</span><span>-₱${discount.toFixed(2)}</span></div>
+                    <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
+                  </div>
+                `;
+                break;
+
+              case 'planA':
+                const downpaymentA = 500;
+                const remainingA = subtotal - downpaymentA;
+                totalToPay = subtotal;
+                breakdownHTML = `
+                  <div class="space-y-2">
+                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Downpayment:</span><span>₱${downpaymentA.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingA.toFixed(2)}</span></div>
+                    <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
+                  </div>
+                `;
+                break;
+
+              case 'planB':
+                const downpaymentB = regularTotal + miscTotal;
+                const remainingB = subtotal - downpaymentB;
+                const monthlyB = remainingB / 4;
+                totalToPay = subtotal;
+                breakdownHTML = `
+                  <div class="space-y-2">
+                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Registration Fees:</span><span>₱${regularTotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Miscellaneous Fees:</span><span>₱${miscTotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between font-semibold"><span>Downpayment (Reg + Misc):</span><span>₱${downpaymentB.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingB.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>4 Monthly Payments:</span><span>₱${monthlyB.toFixed(2)} each</span></div>
+                  </div>
+                `;
+                break;
+            }
+
+            content.innerHTML = `
+              ${subjectTableHTML}
+              <div class="flex flex-col md:flex-row gap-6 mb-6">
+                <!-- Left Column - Fees Breakdown -->
+                <div class="flex-1 space-y-4">
+                  <div class="border rounded p-4">
+                    <h3 class="font-semibold mb-3 text-center">Payment Scheme: ${scheme.payment_name}</h3>
+                    <p class="text-sm text-gray-600 text-center mb-4">Plan: ${plan.toUpperCase()}</p>
+
+                    <h4 class="font-medium mb-2">Fixed Fees</h4>
+                    <table class="w-full mb-4">
+                      <tr>
+                        <td class="py-1">Registration Fees:</td>
+                        <td class="py-1 text-right">₱${regularTotal.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">Miscellaneous Fees:</td>
+                        <td class="py-1 text-right">₱${miscTotal.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">Affiliation Fee:</td>
+                        <td class="py-1 text-right">₱${affTotal.toFixed(2)}</td>
+                      </tr>
+                    </table>
+
+                    <h4 class="font-medium mb-2">Calculated Fees</h4>
+                    <table class="w-full">
+                      <tr>
+                        <td class="py-1">Computer Lab (${totalComLabUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalComLabFee.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">Laboratory (${totalLabUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalLabFee.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">CL Fees (${totalCLUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalCLFee.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">Clinic (${totalCUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalCFee.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-1">Tuition (${tuitionUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalTuitionFee.toFixed(2)}</td>
+                      </tr>
+                      ${nstpUnits > 0 ? `
+                      <tr>
+                        <td class="py-1">NSTP (${nstpUnits} units):</td>
+                        <td class="py-1 text-right">₱${totalNSTPFee.toFixed(2)}</td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Right Column - Payment Plan -->
+                <div class="flex-1">
+                  <div class="border rounded p-4 bg-gray-50 h-full">
+                    <h3 class="font-semibold mb-3 text-center">Payment Plan</h3>
+                    ${breakdownHTML}
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-xs text-gray-500">
+                <p>Assigned on: ${new Date(payment.assigned_at).toLocaleString()}</p>
+                <p>Assigned by: ${payment.assigned_by}</p>
+              </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+          } else {
+            alert('Failed to load payment details');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching payment details:', error);
+          alert('Error loading payment details');
+        });
+    }
+
+    // Close modal function
+    function closePaymentDetailsModal() {
+      const modal = document.getElementById('paymentDetailsModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Initialize on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchAssignedPayments();
+    });
+
+</script>
+<script src="{{ url_for('static', filename='dean.js') }}"></script>
 </body>
-
 </html>

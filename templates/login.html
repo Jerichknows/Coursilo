@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | Admin Portal</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { DEFAULT: '#0A1629', 50: '#F5F7FA' },
+            action: { DEFAULT: '#4B76F6', hover: '#3961E3' }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+  <!-- Login Container -->
+  <div id="loginContainer" class="w-full max-w-md">
+    <div class="rounded-lg border border-gray-200 bg-white shadow-lg">
+      <div class="p-8">
+        <!-- Logo/Header -->
+        <div class="mb-8 text-center">
+          <h1 class="text-2xl font-bold text-navy mb-2">Login Portal</h1>
+          <p class="text-gray-500">Sign in to your account</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-6">
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="mail" class="h-5 w-5 text-gray-400"></i>
+              </div>
+              <input type="email" id="email" required
+                     class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+            </div>
+          </div>
+
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="lock" class="h-5 w-5 text-gray-400"></i>
+              </div>
+              <input type="password" id="password" required
+                     class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              <i data-lucide="eye" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 cursor-pointer"></i>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <input id="remember-me" name="remember-me" type="checkbox"
+                     class="h-4 w-4 text-action focus:ring-action border-gray-300 rounded">
+              <label for="remember-me" class="ml-2 block text-sm text-gray-700">Remember me</label>
+            </div>
+
+            <div class="text-sm">
+              <a href="#" class="font-medium text-action hover:text-action-hover">Forgot password?</a>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-action hover:bg-action-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-action">
+              Sign in
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-6">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white text-gray-500">Or</span>
+            </div>
+          </div>
+
+          <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">
+              Don't have an account?
+              <a href="#" id="showRegisterBtn" class="font-medium text-action hover:text-action-hover">Register here</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Container (hidden by default) -->
+  <div id="registerContainer" class="w-full max-w-md hidden">
+    <div class="rounded-lg border border-gray-200 bg-white shadow-lg">
+      <div class="p-8">
+        <!-- Logo/Header -->
+        <div class="mb-8 text-center">
+          <h1 class="text-2xl font-bold text-navy mb-2">Register Portal</h1>
+          <p class="text-gray-500">Create a new account</p>
+        </div>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i data-lucide="user" class="h-5 w-5 text-gray-400"></i>
+                </div>
+                <input type="text" id="firstName" required
+                       class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              </div>
+            </div>
+
+            <div>
+              <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i data-lucide="user" class="h-5 w-5 text-gray-400"></i>
+                </div>
+                <input type="text" id="lastName" required
+                       class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="registerEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="mail" class="h-5 w-5 text-gray-400"></i>
+              </div>
+              <input type="email" id="registerEmail" required
+                     class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+            </div>
+          </div>
+
+          <div>
+            <label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="lock" class="h-5 w-5 text-gray-400"></i>
+              </div>
+              <input type="password" id="registerPassword" required
+                     class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              <i data-lucide="eye" id="toggleRegisterPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 cursor-pointer"></i>
+            </div>
+          </div>
+
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="lock" class="h-5 w-5 text-gray-400"></i>
+              </div>
+              <input type="password" id="confirmPassword" required
+                     class="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              <i data-lucide="eye" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 cursor-pointer"></i>
+            </div>
+          </div>
+
+          <!-- User Type -->
+          <div>
+            <label for="userType" class="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+            <select id="userType" name="userType" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              <option value="">Select user type</option>
+              <option value="admin">Admin</option>
+              <option value="dean">Dean</option>
+              <option value="program-head">Program Head</option>
+            </select>
+          </div>
+
+          <!-- Department Dropdown (hidden by default) -->
+          <div id="departmentField" class="hidden">
+            <label for="department" class="block text-sm font-medium text-gray-700 mb-1 mt-4">Department</label>
+            <select id="department" name="department" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-action focus:border-action">
+              <option value="">Select a department</option>
+              <!-- Departments will be loaded dynamically -->
+            </select>
+          </div>
+
+          <!-- Program Checkboxes (for Program Head only, hidden by default) -->
+          <div id="programCheckboxes" class="hidden mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Programs to Handle</label>
+            <div class="space-y-2" id="programsList">
+              <!-- Programs will be loaded dynamically based on department selection -->
+            </div>
+          </div>
+
+
+          <div>
+            <button type="submit"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-action hover:bg-action-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-action">
+              Register
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">
+            Already have an account?
+            <a href="#" id="showLoginBtn" class="font-medium text-action hover:text-action-hover">Sign in here</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Form toggle handlers
+    document.getElementById("showRegisterBtn").addEventListener("click", function(e) {
+      e.preventDefault();
+      document.getElementById("loginContainer").classList.add("hidden");
+      document.getElementById("registerContainer").classList.remove("hidden");
+    });
+
+    document.getElementById("showLoginBtn").addEventListener("click", function(e) {
+      e.preventDefault();
+      document.getElementById("registerContainer").classList.add("hidden");
+      document.getElementById("loginContainer").classList.remove("hidden");
+    });
+
+    // Password visibility toggles
+    function setupPasswordToggle(buttonId, inputId) {
+      const button = document.getElementById(buttonId);
+      const input = document.getElementById(inputId);
+
+      button.addEventListener("click", function() {
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        button.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
+        lucide.createIcons();
+      });
+    }
+
+    setupPasswordToggle("togglePassword", "password");
+    setupPasswordToggle("toggleRegisterPassword", "registerPassword");
+    setupPasswordToggle("toggleConfirmPassword", "confirmPassword");
+
+    // User type change handler
+    document.getElementById("userType").addEventListener("change", function() {
+      const userType = this.value.toLowerCase();
+      const departmentField = document.getElementById("departmentField");
+      const departmentSelect = document.getElementById("department");
+      const programCheckboxes = document.getElementById("programCheckboxes");
+
+      // Reset department and programs when user type changes
+      departmentSelect.value = "";
+      programCheckboxes.classList.add("hidden");
+
+      // Show/hide department field based on user type
+      if (userType === "dean" || userType === "program-head") {
+        departmentField.classList.remove("hidden");
+        departmentSelect.setAttribute("required", "required");
+      } else {
+        departmentField.classList.add("hidden");
+        departmentSelect.removeAttribute("required");
+      }
+    });
+
+    // Department change handler (for program head)
+    document.getElementById("department")?.addEventListener("change", function() {
+      const userType = document.getElementById("userType").value.toLowerCase();
+      const programCheckboxes = document.getElementById("programCheckboxes");
+
+      if (userType === "program-head" && this.value) {
+        loadPrograms(this.value);
+        programCheckboxes.classList.remove("hidden");
+      } else {
+        programCheckboxes.classList.add("hidden");
+      }
+    });
+
+    // Load departments from API
+    function loadDepartments() {
+      const departmentSelect = document.getElementById("department");
+
+      // Clear existing options except the first one
+      while (departmentSelect.options.length > 1) {
+        departmentSelect.remove(1);
+      }
+
+      fetch("/get_departments")
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          data.forEach(dept => {
+            const option = document.createElement("option");
+            option.value = dept.id;
+            option.textContent = dept.department || dept.department_name; // Adjust based on your API response
+            departmentSelect.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading departments:", error);
+          // Show error to user
+          const errorElement = document.createElement("p");
+          errorElement.className = "text-sm text-red-500 mt-2";
+          errorElement.textContent = "Failed to load departments. Please try again.";
+          departmentSelect.parentNode.appendChild(errorElement);
+        });
+    }
+
+    // Load programs for selected department
+    function loadPrograms(departmentId) {
+      const programsList = document.getElementById("programsList");
+
+      // Clear existing checkboxes
+      programsList.innerHTML = "";
+
+      // Show loading state
+      programsList.innerHTML = '<p class="text-sm text-gray-500">Loading programs...</p>';
+
+      fetch(`/get_programs?department_id=${departmentId}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          const programsList = document.getElementById("programsList");
+          programsList.innerHTML = ""; // Clear loading text
+
+          if (data.length === 0) {
+            programsList.innerHTML = '<p class="text-sm text-gray-500">No programs found for this department.</p>';
+            return;
+          }
+
+          data.forEach(program => {
+            const checkboxId = `program-${program.id}`;
+            const div = document.createElement("div");
+
+            div.innerHTML = `
+              <label class="flex items-center">
+                <input type="checkbox" id="${checkboxId}" name="programs" value="${program.id}" class="mr-2 h-4 w-4 text-action border-gray-300 rounded">
+                <span class="text-sm text-gray-700">${program.name || program.program_name}</span>
+              </label>
+            `;
+
+            programsList.appendChild(div);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading programs:", error);
+          const programsList = document.getElementById("programsList");
+          programsList.innerHTML = '<p class="text-sm text-red-500">Failed to load programs. Please try again.</p>';
+        });
+
+      }
+
+      // Call this on page load to preload departments
+      loadDepartments();
+
+
+      // REGISTER form submit handler
+      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const form = e.target;
+
+        // Validate password match
+        if (form.registerPassword.value !== form.confirmPassword.value) {
+          alert("Passwords do not match!");
+          return;
+        }
+
+        // Get checked program checkbox values
+        const selectedPrograms = Array.from(form.querySelectorAll("input[name='programs']:checked"))
+          .map(cb => cb.value);
+
+        // Prepare form data
+        const formData = {
+          first_name: form.firstName.value.trim(),
+          last_name: form.lastName.value.trim(),
+          email: form.registerEmail.value.trim(),
+          password: form.registerPassword.value,
+          user_type: form.userType.value,
+          terms_accepted: true
+        };
+
+        // Add department if needed
+        const userType = form.userType.value.toLowerCase();
+        if (userType === "dean" || userType === "program-head") {
+          if (!form.department.value) {
+            alert("Please select a department");
+            return;
+          }
+          formData.department_id = form.department.value;
+        }
+
+        // Add programs if program head
+        if (userType === "program-head") {
+          if (selectedPrograms.length === 0) {
+            alert("Please select at least one program");
+            return;
+          }
+          formData.programs = selectedPrograms.join(','); // Store as comma-separated string
+        }
+
+        try {
+          const res = await fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await res.json();
+
+          if (result.success) {
+            alert("Registration successful! You can now login.");
+            form.reset();
+            document.getElementById("showLoginBtn").click(); // Switch back to login view
+          } else {
+            alert(result.message || "Registration failed. Please try again.");
+          }
+        } catch (error) {
+          console.error("Register error:", error);
+          alert("An error occurred during registration. Please try again.");
+        }
+      });
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+
+      try {
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email.value.trim(),
+            password: form.password.value,
+            remember: form.querySelector("#remember-me").checked
+          })
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          // Redirect to URL from backend depending on user role
+          window.location.href = result.redirect;
+        } else {
+          alert(result.message || "Invalid credentials. Please try again.");
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        alert("An error occurred during login. Please try again.");
+      }
+    });
+  });
+    </script>
+  </body>
+</html>

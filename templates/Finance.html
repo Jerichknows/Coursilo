@@ -28,63 +28,6 @@
   <!-- Swiper CSS & JS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-  <style>
-  body.modal-open {
-    overflow: hidden;
-  }
-  .swiper {
-    width: 100%;
-    height: 100%;
-    padding: 30px;
-    z-index: 1;
-  }
-
-  .swiper-slide {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    height: auto;
-  }
-
-  .swiper-pagination {
-    bottom: 10px;
-  }
-
-  .swiper-button-next, .swiper-button-prev {
-    color: #4B76F6;
-    top: 40%;
-  }
-
-  .swiper-pagination-bullet-active {
-    background-color: #4B76F6;
-  }
-
-  #createModal, #editModal {
-  z-index: 50; /* Higher than other elements */
-}
-/* Add this to your existing styles */
-#createModal, #editModal {
-  z-index: 50;
-}
-
-.mySwiper {
-  z-index: 1;
-  position: relative;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-</style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
    <!-- HEADER -->
@@ -122,8 +65,11 @@
           <table class="w-full text-left text-sm text-gray-700">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                    <th class="p-3 font-medium">Professor ID</th>
+                    <th class="p-3 font-medium">Department</th>
+                    <th class="p-3 font-medium">Program</th>
+                    <th class="p-3 font-medium">Submitted By</th>
                     <th class="p-3 font-medium">Subject Count</th>
+                    <th class="p-3 font-medium">Year</th>
                     <th class="p-3 font-medium">Status</th>
                     <th class="p-3 font-medium text-right">Actions</th>
                 </tr>
@@ -140,7 +86,74 @@
       </div>
     </div>
 
-    <!-- Approved Subjects Container -->
+    <!-- Modal -->
+    <div id="batchModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+      <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+        <div class="flex justify-between items-center mb-4">
+          <h3 id="modalTitle" class="text-lg font-semibold text-gray-900"></h3>
+          <button onclick="closeBatchModal()" class="absolute top-4 right-4">
+            <i data-lucide="x" class="w-5 h-5 text-gray-600"></i>
+          </button>
+        </div>
+        <table class="w-full text-sm text-left text-gray-700">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+            <tr>
+              <th class="p-2">Code</th>
+              <th class="p-2">Name</th>
+              <th class="p-2 text-center">Units</th>
+              <th class="p-2 text-center">Lec</th>
+              <th class="p-2 text-center">CLab</th>
+              <th class="p-2 text-center">Lab</th>
+              <th class="p-2 text-center">SL</th>
+              <th class="p-2 text-center">C</th>
+              <th class="p-2 text-center">Type</th>
+            </tr>
+          </thead>
+          <tbody id="modalBody"></tbody>
+          <tfoot>
+            <tr class="bg-gray-100 font-semibold" id="modalFooter">
+              <td colspan="2" class="p-2 text-right">Total</td>
+              <td id="totalUnits" class="p-2 text-center"></td>
+              <td id="totalLec" class="p-2 text-center"></td>
+              <td id="totalCLab" class="p-2 text-center"></td>
+              <td id="totalLab" class="p-2 text-center"></td>
+              <td id="totalSL" class="p-2 text-center"></td>
+              <td id="totalC" class="p-2 text-center"></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="mt-4 flex justify-start space-x-2">
+          <!-- Add this dropdown here -->
+          <div class="mb-2">
+            <label for="paymentSchemeSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Payment Scheme</label>
+            <select id="paymentSchemeSelect" class="w-full border border-gray-300 rounded-md p-2" onchange="displaySelectedScheme()">
+              <option value="">-- Select Payment Scheme --</option>
+            </select>
+            <div id="selectedSchemeDisplay" class="mt-2 text-gray-700 font-medium"></div>
+          </div>
+          <!-- Add this new dropdown for payment plans -->
+          <div class="mb-2">
+            <label for="paymentPlanSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Payment Plan</label>
+            <select id="paymentPlanSelect" class="w-full border border-gray-300 rounded-md p-2" onchange="calculatePaymentPlan()">
+              <option value="">-- Select Payment Plan --</option>
+              <option value="cash">Cash</option>
+              <option value="planA">Plan A</option>
+              <option value="planB">Plan B </option>
+            </select>
+            <div id="paymentBreakdown" class="mt-4 hidden bg-gray-100 p-4 rounded-md">
+              <div id="breakdownDetails"></div>
+            </div>
+          </div>
+          <button id="approveBtn" class="hidden bg-green-600 text-white px-4 py-2 rounded-md">Approve</button>
+          <button id="denyBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded-md">Deny</button>
+        </div>
+        <button id="Assignpymt" class="bg-green-600 text-white px-4 py-2 rounded-md">Assign Payment</button>
+      </div>
+    </div>
+
+
+    <!-- Process Payment Container -->
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
       <div class="p-6">
         <div class="mb-6 flex items-center gap-3">
@@ -156,14 +169,17 @@
           <table class="w-full text-left text-sm text-gray-700">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                    <th class="p-3 font-medium">Professor ID</th>
-                    <th class="p-3 font-medium">Subject Count</th>
-                    <th class="p-3 font-medium">Status</th>
-                    <th class="p-3 font-medium text-right">Actions</th>
+                  <th class="p-3 font-medium">Department</th>
+                  <th class="p-3 font-medium">Program</th>
+                  <th class="p-3 font-medium">Submitted By</th>
+                  <th class="p-3 font-medium">Subject Count</th>
+                  <th class="p-3 font-medium">Year</th>
+                  <th class="p-3 font-medium">Status</th>
+                  <th class="p-3 font-medium text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody id="approvedTableBody">
-                <tr id="noApprovedRow">
+            <tbody id="assignedTableBody">
+                <tr id="noAssignedRow">
                     <td colspan="4" class="py-8 text-center text-gray-500">
                         No subjects have been processed yet.
                     </td>
@@ -174,18 +190,29 @@
       </div>
     </div>
 
+    <!-- Payment Details Modal -->
+    <div id="paymentDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto py-10 px-4 flex items-start justify-center">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative">
+        <button onclick="closePaymentDetailsModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+        <h2 class="text-2xl font-semibold">Payment Details</h2>
+        <div id="paymentDetailsContent" class="text-gray-700 whitespace-pre-wrap text-sm">
+        </div>
+      </div>
+    </div>
+
+
     <!-- Payment Schemes List -->
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
       <div class="p-4 border-b flex items-center gap-2">
         <i data-lucide="credit-card" class="w-5 h-5 text-gray-700"></i>
         <h2 class="text-lg font-semibold text-gray-800">Existing Payment Schemes</h2>
       </div>
-      <div class="swiper mySwiper">
-        <div id="schemes-container" class="swiper-wrapper">
+      <div class="">
+        <div id="schemes-container" class="">
           <!-- Schemes will be loaded here -->
-          <div class="swiper-slide p-4 text-center text-gray-500">Loading payment schemes...</div>
+          <div class=" p-4 text-center text-gray-500">Loading payment schemes...</div>
         </div>
-        <div class="swiper-pagination"></div>
+        <div class=""></div>
       </div>
     </div>
 
@@ -425,9 +452,1116 @@
 </div>
 
   </main>
-<script src="{{ url_for('static', filename='finance.js') }}"></script>
-<script src="{{ url_for('static', filename='assignpayment.js') }}"></script>
-<script src="{{ url_for('static', filename='paymentscheme.js') }}"></script>
-<script src="{{ url_for('static', filename='assignedpayment.js') }}"></script>
+<script>
+let currentBatchId = null;
+
+function fetchPendingApprovals() {
+  fetch('/get_pending_approvals')
+    .then(res => res.json())
+    .then(data => {
+      const tableBody = document.getElementById('financeTableBody');
+      tableBody.innerHTML = '';
+
+      if (data.success && data.batches.length > 0) {
+        data.batches.forEach(batch => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="p-3">${batch.department}</td>
+            <td class="p-3">${batch.program_name}</td>
+            <td class="p-3">${batch.submitted_by}</td>
+            <td class="p-3 text-center">${batch.subject_count}</td>
+            <td class="p-3">${batch.year_semester}</td>
+            <td class="p-3">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Pending
+              </span>
+            </td>
+            <td class="p-3 text-right">
+              <button onclick="viewPendingBatch(${batch.id}, '${batch.submitted_by}')" class="px-3 py-1 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium transition-colors">
+                View
+              </button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } else {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-8 text-center text-gray-500">
+              No approved subject offerings to process.
+            </td>
+          </tr>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching pending approvals:', error);
+    });
+}
+
+function viewPendingBatch(batchId, professorName) {
+  currentBatchId = batchId;
+
+  fetch(`/get_batch_subjects/${batchId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const modal = document.getElementById('batchModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+
+        modalTitle.textContent = `Subjects for ${professorName}`;
+        modalBody.innerHTML = '';
+
+        // Initialize totals
+        let totalUnits = 0, totalLec = 0, totalCLab = 0, totalLab = 0, totalSL = 0, totalC = 0;
+
+        data.subjects.forEach(subj => {
+          modalBody.innerHTML += `
+            <tr class="border-b">
+              <td class="p-2">${subj.subject_code}</td>
+              <td class="p-2">${subj.subject_name}</td>
+              <td class="p-2 text-center">${subj.total_units}</td>
+              <td class="p-2 text-center">${subj.lecture}</td>
+              <td class="p-2 text-center">${subj.com_lab}</td>
+              <td class="p-2 text-center">${subj.laboratory}</td>
+              <td class="p-2 text-center">${subj.school_lecture}</td>
+              <td class="p-2 text-center">${subj.clinic}</td>
+              <td class="p-2 text-center">${subj.subject_type} ${subj.is_nstp ? '(NSTP)' : ''}</td>
+            </tr>
+          `;
+
+          // Accumulate totals
+          totalUnits += subj.total_units || 0;
+          totalLec += subj.lecture || 0;
+          totalCLab += subj.com_lab || 0;
+          totalLab += subj.laboratory || 0;
+          totalSL += subj.school_lecture || 0;
+          totalC += subj.clinic || 0;
+        });
+
+        // Display totals in the footer
+        document.getElementById('totalUnits').textContent = totalUnits;
+        document.getElementById('totalLec').textContent = totalLec;
+        document.getElementById('totalCLab').textContent = totalCLab;
+        document.getElementById('totalLab').textContent = totalLab;
+        document.getElementById('totalSL').textContent = totalSL;
+        document.getElementById('totalC').textContent = totalC;
+
+        // Populate payment schemes
+        loadPaymentSchemesIntoDropdown();
+        document.getElementById('selectedSchemeDisplay').textContent = '';
+        document.getElementById('paymentPlanSelect').value = '';
+        document.getElementById('paymentBreakdown').classList.add('hidden');
+
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        lucide.createIcons();
+      }
+    });
+}
+
+// Assign payment button handler
+document.getElementById('Assignpymt').addEventListener('click', async function() {
+  const schemeSelect = document.getElementById('paymentSchemeSelect');
+  const planSelect = document.getElementById('paymentPlanSelect');
+
+  if (!schemeSelect.value) {
+    alert('Please select a payment scheme first');
+    return;
+  }
+
+  if (!planSelect.value) {
+    alert('Please select a payment plan');
+    return;
+  }
+
+  try {
+    const response = await fetch('/assign-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        batch_id: currentBatchId,
+        payment_scheme_id: schemeSelect.value,
+        payment_plan: planSelect.value
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to assign payment');
+    }
+
+    alert('Payment assigned successfully!');
+    closeBatchModal();
+    fetchPendingApprovals();
+    fetchAssignedPayments();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error assigning payment: ' + error.message);
+  }
+});
+
+function loadPaymentSchemesIntoDropdown() {
+  const dropdown = document.getElementById('paymentSchemeSelect');
+  dropdown.innerHTML = '<option value="">-- Select Payment Scheme --</option>';
+
+  fetch('/payment-schemes') // Or cache this data if preferred
+    .then(res => res.json())
+    .then(schemes => {
+      schemes.forEach(scheme => {
+        const option = document.createElement('option');
+        option.value = scheme.id;
+        option.textContent = scheme.payment_name;
+        dropdown.appendChild(option);
+      });
+    })
+    .catch(error => {
+      console.error('Error loading schemes:', error);
+    });
+}
+
+function displaySelectedScheme() {
+  const select = document.getElementById('paymentSchemeSelect');
+  const displayDiv = document.getElementById('selectedSchemeDisplay');
+  const selectedId = select.value;
+
+  document.getElementById('paymentPlanSelect').value = '';
+  document.getElementById('paymentBreakdown').classList.add('hidden');
+
+  if (selectedId) {
+    fetch(`/payment-schemes/${selectedId}`)
+      .then(res => res.json())
+      .then(scheme => {
+        if (!window.schemeDataCache) window.schemeDataCache = {};
+        window.schemeDataCache[selectedId] = scheme;
+
+        const subjectRows = document.querySelectorAll('#modalBody tr');
+
+        let totalComLabFee = 0;
+        let totalLabFee = 0;
+        let totalCLFee = 0;
+        let totalCFee = 0;
+        let totalTuitionFee = 0;
+        let totalNSTPFee = 0;
+
+        let totalUnits = 0;
+        let nstpUnits = 0;
+
+        // These are for unit counts per category
+        let totalComLabUnits = 0;
+        let totalLabUnits = 0;
+        let totalCLUnits = 0;
+        let totalCUnits = 0;
+        let tuitionUnits = 0;
+
+        subjectRows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          const units = parseFloat(cells[2].textContent) || 0;
+          const comLab = parseFloat(cells[4].textContent) || 0;
+          const lab = parseFloat(cells[5].textContent) || 0;
+          const cl = parseFloat(cells[6].textContent) || 0;
+          const c = parseFloat(cells[7].textContent) || 0;
+          const isNSTP = cells[8].textContent.includes('NSTP');
+
+          totalComLabUnits += comLab;
+          totalLabUnits += lab;
+          totalCLUnits += cl;
+          totalCUnits += c;
+
+          totalComLabFee += comLab * (parseFloat(scheme.com_lab_fee) || 0);
+          totalLabFee += lab * (parseFloat(scheme.laboratory_fee) || 0);
+          totalCLFee += cl * (parseFloat(scheme.school_lecture_fee) || 0);
+          totalCFee += c * (parseFloat(scheme.clinic_fee) || 0);
+
+          if (isNSTP) {
+            nstpUnits += units;
+            totalNSTPFee += units * (parseFloat(scheme.unit_fee) || 0);
+          } else {
+            tuitionUnits += units;
+            totalTuitionFee += units * (parseFloat(scheme.tuition_fee) || 0);
+          }
+
+          totalUnits += units;
+        });
+
+        const regularTotal = parseFloat(scheme.regular_fees) || 0;
+        const miscTotal = parseFloat(scheme.misc_fees) || 0;
+        const affTotal = parseFloat(scheme.aff_fee) || 0;
+
+        const subtotal = regularTotal + miscTotal + totalComLabFee + totalLabFee +
+                         totalCLFee + totalCFee + affTotal + totalTuitionFee + totalNSTPFee;
+
+        // Cache computed values
+        Object.assign(window.schemeDataCache[selectedId], {
+          totalComLabFee,
+          totalLabFee,
+          totalCLFee,
+          totalCFee,
+          totalTuitionFee,
+          totalNSTPFee,
+          totalUnits,
+          nstpUnits
+        });
+
+        displayDiv.innerHTML = `
+          <div class="bg-gray-100 p-4 rounded">
+            <h4 class="font-semibold text-lg mb-2">${scheme.payment_name}</h4>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h5 class="font-medium mb-1">Fixed Fees</h5>
+                <div class="space-y-1">
+                  <div class="flex justify-between"><span>Registration Fees:</span><span>₱${regularTotal.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>Miscellaneous Fees:</span><span>₱${miscTotal.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>Affiliation Fee:</span><span>₱${affTotal.toFixed(2)}</span></div>
+                </div>
+              </div>
+              <div>
+                <h5 class="font-medium mb-1">Calculated Fees</h5>
+                <div class="space-y-1">
+                  <div class="flex justify-between"><span>Computer Lab Fees (${totalComLabUnits} units):</span><span>₱${totalComLabFee.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>Laboratory Fees (${totalLabUnits} units):</span><span>₱${totalLabFee.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>CL Fees (${totalCLUnits} units):</span><span>₱${totalCLFee.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>Clinic Fees (${totalCUnits} units):</span><span>₱${totalCFee.toFixed(2)}</span></div>
+                  <div class="flex justify-between"><span>Tuition (${tuitionUnits} units):</span><span>₱${totalTuitionFee.toFixed(2)}</span></div>
+                  ${nstpUnits > 0 ? `<div class="flex justify-between"><span>NSTP (${nstpUnits} units):</span><span>₱${totalNSTPFee.toFixed(2)}</span></div>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t">
+              <div class="flex justify-between font-bold text-lg">
+                <span>Total Fees:</span>
+                <span>₱${subtotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+  } else {
+    displayDiv.textContent = '';
+  }
+}
+
+
+function calculatePaymentPlan() {
+  const planSelect = document.getElementById('paymentPlanSelect');
+  const schemeSelect = document.getElementById('paymentSchemeSelect');
+  const breakdownDiv = document.getElementById('paymentBreakdown');
+  const breakdownDetails = document.getElementById('breakdownDetails');
+
+  if (!planSelect.value) {
+    breakdownDiv.classList.add('hidden');
+    return;
+  }
+
+  if (!schemeSelect.value) {
+    alert('Please select a payment scheme first');
+    planSelect.value = '';
+    return;
+  }
+
+  const schemeId = schemeSelect.value;
+  const schemeData = window.schemeDataCache[schemeId];
+
+  if (!schemeData) {
+    alert('Payment scheme data not available');
+    return;
+  }
+
+  const {
+    totalComLabFee = 0,
+    totalLabFee = 0,
+    totalCLFee = 0,
+    totalCFee = 0,
+    totalTuitionFee = 0,
+    totalNSTPFee = 0
+  } = schemeData;
+
+  const regularTotal = parseFloat(schemeData.regular_fees) || 0;
+  const miscTotal = parseFloat(schemeData.misc_fees) || 0;
+  const affTotal = parseFloat(schemeData.aff_fee) || 0;
+
+  const totalFees = regularTotal + miscTotal + totalComLabFee + totalLabFee +
+                    totalCLFee + totalCFee + affTotal + totalTuitionFee + totalNSTPFee;
+
+  let breakdownHTML = '';
+
+  switch (planSelect.value) {
+    case 'cash': {
+      const discount = totalFees * 0.05;
+      const cashTotal = totalFees - discount;
+      breakdownHTML = `
+        <div class="space-y-2">
+          <p><strong>Total Fees:</strong> ₱${totalFees.toFixed(2)}</p>
+          <p class="text-green-600">5% Discount: -₱${discount.toFixed(2)}</p>
+          <p class="font-bold">Amount to Pay: ₱${cashTotal.toFixed(2)}</p>
+        </div>
+      `;
+      break;
+    }
+
+    case 'planA': {
+      const downpaymentA = 500;
+      const remainingA = totalFees - downpaymentA;
+      breakdownHTML = `
+        <div class="space-y-2">
+          <p><strong>Total Fees:</strong> ₱${totalFees.toFixed(2)}</p>
+          <p>Downpayment: ₱${downpaymentA.toFixed(2)}</p>
+          <p>Remaining Balance: ₱${remainingA.toFixed(2)}</p>
+        </div>
+      `;
+      break;
+    }
+
+    case 'planB': {
+      const downpaymentB = regularTotal + miscTotal;
+      const remainingB = totalFees - downpaymentB;
+      const monthlyB = remainingB / 4;
+      breakdownHTML = `
+        <div class="space-y-2">
+          <p><strong>Total Fees:</strong> ₱${totalFees.toFixed(2)}</p>
+          <p>Registration Fees: ₱${regularTotal.toFixed(2)}</p>
+          <p>Miscellaneous Fees: ₱${miscTotal.toFixed(2)}</p>
+          <p class="font-semibold">Downpayment (Reg + Misc): ₱${downpaymentB.toFixed(2)}</p>
+          <p>Remaining Balance: ₱${remainingB.toFixed(2)}</p>
+          <p>4 Monthly Payments: ₱${monthlyB.toFixed(2)} each</p>
+        </div>
+      `;
+      break;
+    }
+  }
+
+  breakdownDetails.innerHTML = breakdownHTML;
+  breakdownDiv.classList.remove('hidden');
+}
+
+
+// Call this when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+  lucide.createIcons();
+
+  fetchPendingApprovals(); // Add this line
+});
+
+function closeBatchModal() {
+  document.getElementById('batchModal').classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+
+// Payment Scheme Scripts
+
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  loadPaymentSchemes();
+});
+
+// Modal functions
+function openCreateModal() {
+  document.getElementById('createModal').classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+}
+
+function closeCreateModal() {
+  document.getElementById('createModal').classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+  document.getElementById('schemeForm').reset();
+  resetFeeContainers();
+}
+
+// Fee item management
+function addRegularFee() {
+  const container = document.getElementById('regular-fees-container');
+  addFeeItem(container, 'regular_fees[]', 'regular_amounts[]', 'calculateRegularTotal');
+}
+
+function addMiscFee() {
+  const container = document.getElementById('misc-fees-container');
+  addFeeItem(container, 'misc_fees[]', 'misc_amounts[]', 'calculateMiscTotal');
+}
+
+function addFeeItem(container, namePrefix, amountPrefix, calculateFunction) {
+  const div = document.createElement('div');
+  div.className = 'flex items-center gap-3';
+  div.innerHTML = `
+    <input type="text" name="${namePrefix}" placeholder="Fee description"
+           class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+    <input type="number" name="${amountPrefix}" placeholder="Amount"
+           class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+           oninput="${calculateFunction}()">
+    <button type="button" onclick="removeFeeItem(this)" class="text-red-500 hover:text-red-700">
+      <i data-lucide="trash-2"></i>
+    </button>
+  `;
+  container.appendChild(div);
+  lucide.createIcons();
+}
+
+function removeFeeItem(button) {
+  button.closest('div').remove();
+  calculateRegularTotal();
+  calculateMiscTotal();
+}
+
+function resetFeeContainers() {
+  document.getElementById('regular-fees-container').innerHTML = `
+    <div class="flex items-center gap-3">
+      <input type="text" name="regular_fees[]" placeholder="Fee description"
+             class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+      <input type="number" name="regular_amounts[]" placeholder="Amount"
+             class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+             oninput="calculateRegularTotal()">
+      <button type="button" onclick="removeFeeItem(this)" class="text-red-500 hover:text-red-700">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>
+  `;
+
+  document.getElementById('misc-fees-container').innerHTML = `
+    <div class="flex items-center gap-3">
+      <input type="text" name="misc_fees[]" placeholder="Fee description"
+             class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+      <input type="number" name="misc_amounts[]" placeholder="Amount"
+             class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+             oninput="calculateMiscTotal()">
+      <button type="button" onclick="removeFeeItem(this)" class="text-red-500 hover:text-red-700">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>
+  `;
+
+  document.getElementById('regular-total').textContent = '0';
+  document.getElementById('misc-total').textContent = '0';
+  lucide.createIcons();
+}
+
+// Calculation functions
+function calculateRegularTotal() {
+  const amounts = document.getElementsByName('regular_amounts[]');
+  let total = 0;
+  amounts.forEach(input => {
+    total += parseFloat(input.value) || 0;
+  });
+  document.getElementById('regular-total').textContent = total.toFixed(2);
+}
+
+function calculateMiscTotal() {
+  const amounts = document.getElementsByName('misc_amounts[]');
+  let total = 0;
+  amounts.forEach(input => {
+    total += parseFloat(input.value) || 0;
+  });
+  document.getElementById('misc-total').textContent = total.toFixed(2);
+}
+
+// Form submission
+document.getElementById('schemeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  // Collect all form data
+  const formData = {
+    payment_name: document.getElementById('payment_name').value,
+    regular_fees: [],
+    misc_fees: [],
+    com_lab_fee: document.getElementById('com_lab_fee').value,
+    laboratory_fee: document.getElementById('laboratory_fee').value,
+    school_lecture_fee: document.getElementById('school_lecture_fee').value,
+    clinic_fee: document.getElementById('clinic_fee').value,
+    aff_fee: document.getElementById('aff_fee').value,
+    tuition_fee: document.getElementById('tuition_fee').value,
+    unit_fee: document.getElementById('unit_fee').value
+  };
+
+  // Collect regular fees
+  const regularNames = document.getElementsByName('regular_fees[]');
+  const regularAmounts = document.getElementsByName('regular_amounts[]');
+  for (let i = 0; i < regularNames.length; i++) {
+    if (regularNames[i].value && regularAmounts[i].value) {
+      formData.regular_fees.push({
+        description: regularNames[i].value,
+        amount: regularAmounts[i].value
+      });
+    }
+  }
+
+  // Collect misc fees
+  const miscNames = document.getElementsByName('misc_fees[]');
+  const miscAmounts = document.getElementsByName('misc_amounts[]');
+  for (let i = 0; i < miscNames.length; i++) {
+    if (miscNames[i].value && miscAmounts[i].value) {
+      formData.misc_fees.push({
+        description: miscNames[i].value,
+        amount: miscAmounts[i].value
+      });
+    }
+  }
+
+  try {
+    const response = await fetch('/payment-schemes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save payment scheme');
+    }
+
+    const result = await response.json();
+    alert('Payment scheme created successfully!');
+    closeCreateModal();
+    loadPaymentSchemes();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error creating payment scheme: ' + error.message);
+  }
+});
+
+async function loadPaymentSchemes() {
+  const container = document.getElementById('schemes-container');
+  container.innerHTML = '<div class=" p-4 text-center text-gray-500">Loading payment schemes...</div>';
+
+  try {
+    const response = await fetch('/payment-schemes');
+    if (!response.ok) {
+      throw new Error('Failed to fetch payment schemes');
+    }
+
+    const schemes = await response.json();
+
+    if (schemes.length === 0) {
+      container.innerHTML = '<div class=" p-4 text-center text-gray-500">No payment schemes found</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    schemes.forEach(scheme => {
+      const schemeElement = document.createElement('div');
+      schemeElement.className = ' p-4 hover:bg-gray-50';
+      schemeElement.innerHTML = `
+        <div class="flex flex-col h-full">
+          <div class="flex-grow">
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="font-medium text-lg text-gray-800">${scheme.payment_name}</h3>
+                <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <span class="text-gray-500">Registration:</span>
+                    <span class="font-medium">₱${scheme.regular_fees}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Misc:</span>
+                    <span class="font-medium">₱${scheme.misc_fees}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Com Lab Fees:</span>
+                    <span class="font-medium">₱${scheme.com_lab_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Laboratory Fees:</span>
+                    <span class="font-medium">₱${scheme.laboratory_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">CL Fees:</span>
+                    <span class="font-medium">₱${scheme.school_lecture_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">C Fees:</span>
+                    <span class="font-medium">₱${scheme.clinic_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Lab Fees:</span>
+                    <span class="font-medium">₱${scheme.lab_fees}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">RLE Fees:</span>
+                    <span class="font-medium">₱${scheme.rle_fees}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Affiliation:</span>
+                    <span class="font-medium">₱${scheme.aff_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Tuition/Unit:</span>
+                    <span class="font-medium">₱${scheme.tuition_fee}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">NSTP/Unit:</span>
+                    <span class="font-medium">₱${scheme.unit_fee}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="editScheme('${scheme.id}')" class="text-blue-600 hover:text-blue-800" data-lucide="pencil">
+                  <span class="sr-only">Edit</span>
+                </button>
+                <button onclick="deleteScheme('${scheme.id}')" class="text-red-600 hover:text-red-800" data-lucide="trash-2">
+                  <span class="sr-only">Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(schemeElement);
+    });
+
+
+    // Refresh icons after all schemes are added
+    lucide.createIcons();
+  } catch (error) {
+    console.error('Error:', error);
+    container.innerHTML = '<div class=" p-4 text-center text-red-500">Error loading payment schemes</div>';
+  }
+}
+
+async function editScheme(schemeId) {
+  try {
+    const response = await fetch(`/payment-schemes/${schemeId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch scheme');
+    }
+
+    const scheme = await response.json();
+
+    // Populate the edit form
+    document.getElementById('edit_scheme_id').value = scheme.id;
+    document.getElementById('edit_payment_name').value = scheme.payment_name;
+    document.getElementById('edit_com_lab_fee').value = scheme.com_lab_fee;
+    document.getElementById('edit_laboratory_fee').value = scheme.laboratory_fee;
+    document.getElementById('edit_school_lecture_fee').value = scheme.school_lecture_fee;
+    document.getElementById('edit_clinic_fee').value = scheme.clinic_fee;
+    document.getElementById('edit_aff_fee').value = scheme.aff_fee;
+    document.getElementById('edit_tuition_fee').value = scheme.tuition_fee;
+
+    // Clear and populate regular fees
+    resetEditFeeContainers();
+    if (scheme.regular_fees && scheme.regular_fees.length > 0) {
+      scheme.regular_fees.forEach(fee => {
+        addEditRegularFee(fee.description, fee.amount);
+      });
+    } else {
+      addEditRegularFee(); // Add one empty row
+    }
+
+    // Clear and populate misc fees
+    if (scheme.misc_fees && scheme.misc_fees.length > 0) {
+      scheme.misc_fees.forEach(fee => {
+        addEditMiscFee(fee.description, fee.amount);
+      });
+    } else {
+      addEditMiscFee(); // Add one empty row
+    }
+
+    // Calculate totals
+    calculateEditRegularTotal();
+    calculateEditMiscTotal();
+
+    // Open the modal
+    openEditModal();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error loading scheme for editing');
+  }
+}
+
+async function deleteScheme(schemeId) {
+  if (!confirm('Are you sure you want to delete this payment scheme?')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/payment-schemes/${schemeId}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete scheme');
+    }
+
+    alert('Payment scheme deleted successfully');
+    loadPaymentSchemes();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error deleting payment scheme');
+  }
+}
+
+// Edit Modal functions
+function openEditModal() {
+  document.getElementById('editModal').classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+  document.getElementById('editSchemeForm').reset();
+  resetEditFeeContainers();
+}
+
+function resetEditFeeContainers() {
+  document.getElementById('edit-regular-fees-container').innerHTML = '';
+  document.getElementById('edit-misc-fees-container').innerHTML = '';
+  document.getElementById('edit-regular-total').textContent = '0';
+  document.getElementById('edit-misc-total').textContent = '0';
+}
+
+// Edit fee item management
+function addEditRegularFee(description = '', amount = '') {
+  const container = document.getElementById('edit-regular-fees-container');
+  addEditFeeItem(container, 'edit_regular_fees[]', 'edit_regular_amounts[]', 'calculateEditRegularTotal', description, amount);
+}
+
+function addEditMiscFee(description = '', amount = '') {
+  const container = document.getElementById('edit-misc-fees-container');
+  addEditFeeItem(container, 'edit_misc_fees[]', 'edit_misc_amounts[]', 'calculateEditMiscTotal', description, amount);
+}
+
+function addEditFeeItem(container, namePrefix, amountPrefix, calculateFunction, description = '', amount = '') {
+  const div = document.createElement('div');
+  div.className = 'flex items-center gap-3';
+  div.innerHTML = `
+    <input type="text" name="${namePrefix}" placeholder="Fee description" value="${description}"
+           class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+    <input type="number" name="${amountPrefix}" placeholder="Amount" value="${amount}"
+           class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+           oninput="${calculateFunction}()">
+    <button type="button" onclick="removeEditFeeItem(this)" class="text-red-500 hover:text-red-700">
+      <i data-lucide="trash-2"></i>
+    </button>
+  `;
+  container.appendChild(div);
+  lucide.createIcons();
+}
+
+function removeEditFeeItem(button) {
+  button.closest('div').remove();
+  calculateEditRegularTotal();
+  calculateEditMiscTotal();
+}
+
+// Edit calculation functions
+function calculateEditRegularTotal() {
+  const amounts = document.getElementsByName('edit_regular_amounts[]');
+  let total = 0;
+  amounts.forEach(input => {
+    total += parseFloat(input.value) || 0;
+  });
+  document.getElementById('edit-regular-total').textContent = total.toFixed(2);
+}
+
+function calculateEditMiscTotal() {
+  const amounts = document.getElementsByName('edit_misc_amounts[]');
+  let total = 0;
+  amounts.forEach(input => {
+    total += parseFloat(input.value) || 0;
+  });
+  document.getElementById('edit-misc-total').textContent = total.toFixed(2);
+}
+
+// Fetch assigned payments
+function fetchAssignedPayments() {
+  fetch('/get_assigned_payments')
+    .then(res => res.json())
+    .then(data => {
+      const tableBody = document.getElementById('assignedTableBody');
+      tableBody.innerHTML = '';
+
+      if (data.success && data.assigned_payments.length > 0) {
+        data.assigned_payments.forEach(payment => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="p-3">${payment.department}</td>
+            <td class="p-3">${payment.program_name}</td>
+            <td class="p-3">${payment.submitted_by}</td>
+            <td class="p-3 text-center">${payment.subject_count}</td>
+            <td class="p-3">${payment.year_semester}</td>
+            <td class="p-3">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Processed
+              </span>
+            </td>
+            <td class="p-3 text-right">
+              <button onclick="viewPaymentDetails(${payment.id})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors">
+                View Details
+              </button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } else {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-8 text-center text-gray-500">
+              No subjects have been processed yet.
+            </td>
+          </tr>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching assigned payments:', error);
+    });
+}
+
+function viewPaymentDetails(batchId) {
+  fetch(`/get_assigned_payment_details/${batchId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const modal = document.getElementById('paymentDetailsModal');
+        const content = document.getElementById('paymentDetailsContent');
+
+        // Extract the payment details
+        const payment = data.payment_details;
+        const scheme = payment.payment_scheme;
+        const plan = payment.payment_plan;
+        const subjects = payment.subjects;
+
+        // Calculate totals from subjects
+        let totalComLabUnits = 0;
+        let totalLabUnits = 0;
+        let totalCLUnits = 0;
+        let totalCUnits = 0;
+        let tuitionUnits = 0;
+        let nstpUnits = 0;
+        let totalUnits = 0;
+
+        // Create subject details table
+        let subjectTableHTML = `
+          <h3 class="text-lg font-semibold mb-4">Subject Details</h3>
+          <table class="w-full text-sm border mb-6">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="p-2 border text-left">Code</th>
+                <th class="p-2 border text-left">Name</th>
+                <th class="p-2 border text-center">Units</th>
+                <th class="p-2 border text-center">Lec</th>
+                <th class="p-2 border text-center">CLab</th>
+                <th class="p-2 border text-center">Lab</th>
+                <th class="p-2 border text-center">SL</th>
+                <th class="p-2 border text-center">C</th>
+                <th class="p-2 border text-center">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        subjects.forEach(subj => {
+          totalComLabUnits += subj.com_lab || 0;
+          totalLabUnits += subj.laboratory || 0;
+          totalCLUnits += subj.school_lecture || 0;
+          totalCUnits += subj.clinic || 0;
+          totalUnits += subj.total_units || 0;
+
+          if (subj.is_nstp) {
+            nstpUnits += subj.total_units || 0;
+          } else {
+            tuitionUnits += subj.total_units || 0;
+          }
+
+          subjectTableHTML += `
+            <tr class="border-b">
+              <td class="p-2 border">${subj.subject_code}</td>
+              <td class="p-2 border">${subj.subject_name}</td>
+              <td class="p-2 border text-center">${subj.total_units}</td>
+              <td class="p-2 border text-center">${subj.lecture}</td>
+              <td class="p-2 border text-center">${subj.com_lab}</td>
+              <td class="p-2 border text-center">${subj.laboratory}</td>
+              <td class="p-2 border text-center">${subj.school_lecture}</td>
+              <td class="p-2 border text-center">${subj.clinic}</td>
+              <td class="p-2 border text-center">${subj.subject_type} ${subj.is_nstp ? '(NSTP)' : ''}</td>
+            </tr>
+          `;
+        });
+
+        subjectTableHTML += `
+              <tr class="bg-gray-100 font-medium">
+                <td colspan="2" class="p-2 border text-right">Total</td>
+                <td class="p-2 border text-center">${totalUnits}</td>
+                <td class="p-2 border text-center"></td>
+                <td class="p-2 border text-center">${totalComLabUnits}</td>
+                <td class="p-2 border text-center">${totalLabUnits}</td>
+                <td class="p-2 border text-center">${totalCLUnits}</td>
+                <td class="p-2 border text-center">${totalCUnits}</td>
+                <td class="p-2 border text-center"></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+        // Calculate fees based on scheme
+        const regularTotal = parseFloat(scheme.regular_fees) || 0;
+        const miscTotal = parseFloat(scheme.misc_fees) || 0;
+        const affTotal = parseFloat(scheme.aff_fee) || 0;
+
+        const totalComLabFee = totalComLabUnits * (parseFloat(scheme.com_lab_fee) || 0);
+        const totalLabFee = totalLabUnits * (parseFloat(scheme.laboratory_fee) || 0);
+        const totalCLFee = totalCLUnits * (parseFloat(scheme.school_lecture_fee) || 0);
+        const totalCFee = totalCUnits * (parseFloat(scheme.clinic_fee) || 0);
+        const totalTuitionFee = tuitionUnits * (parseFloat(scheme.tuition_fee) || 0);
+        const totalNSTPFee = nstpUnits * (parseFloat(scheme.unit_fee) || 0);
+
+        const subtotal = regularTotal + miscTotal + totalComLabFee + totalLabFee +
+                         totalCLFee + totalCFee + affTotal + totalTuitionFee + totalNSTPFee;
+
+        // Calculate payment plan breakdown
+        let breakdownHTML = '';
+        let totalToPay = subtotal;
+
+        switch (plan) {
+          case 'cash':
+            const discount = subtotal * 0.05;
+            totalToPay = subtotal - discount;
+            breakdownHTML = `
+              <div class="space-y-2">
+                <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                <div class="flex justify-between text-green-600"><span>5% Discount:</span><span>-₱${discount.toFixed(2)}</span></div>
+                <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
+              </div>
+            `;
+            break;
+
+          case 'planA':
+            const downpaymentA = 500;
+            const remainingA = subtotal - downpaymentA;
+            totalToPay = subtotal;
+            breakdownHTML = `
+              <div class="space-y-2">
+                <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Downpayment:</span><span>₱${downpaymentA.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingA.toFixed(2)}</span></div>
+                <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
+              </div>
+            `;
+            break;
+
+          case 'planB':
+            const downpaymentB = regularTotal + miscTotal;
+            const remainingB = subtotal - downpaymentB;
+            const monthlyB = remainingB / 4;
+            totalToPay = subtotal;
+            breakdownHTML = `
+              <div class="space-y-2">
+                <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Registration Fees:</span><span>₱${regularTotal.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Miscellaneous Fees:</span><span>₱${miscTotal.toFixed(2)}</span></div>
+                <div class="flex justify-between font-semibold"><span>Downpayment (Reg + Misc):</span><span>₱${downpaymentB.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingB.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>4 Monthly Payments:</span><span>₱${monthlyB.toFixed(2)} each</span></div>
+              </div>
+            `;
+            break;
+        }
+
+        content.innerHTML = `
+          ${subjectTableHTML}
+          <div class="flex flex-col md:flex-row gap-6 mb-6">
+            <!-- Left Column - Fees Breakdown -->
+            <div class="flex-1 space-y-4">
+              <div class="border rounded p-4">
+                <h3 class="font-semibold mb-3 text-center">Payment Scheme: ${scheme.payment_name}</h3>
+                <p class="text-sm text-gray-600 text-center mb-4">Plan: ${plan.toUpperCase()}</p>
+
+                <h4 class="font-medium mb-2">Fixed Fees</h4>
+                <table class="w-full mb-4">
+                  <tr>
+                    <td class="py-1">Registration Fees:</td>
+                    <td class="py-1 text-right">₱${regularTotal.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">Miscellaneous Fees:</td>
+                    <td class="py-1 text-right">₱${miscTotal.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">Affiliation Fee:</td>
+                    <td class="py-1 text-right">₱${affTotal.toFixed(2)}</td>
+                  </tr>
+                </table>
+
+                <h4 class="font-medium mb-2">Calculated Fees</h4>
+                <table class="w-full">
+                  <tr>
+                    <td class="py-1">Computer Lab (${totalComLabUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalComLabFee.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">Laboratory (${totalLabUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalLabFee.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">CL Fees (${totalCLUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalCLFee.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">Clinic (${totalCUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalCFee.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">Tuition (${tuitionUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalTuitionFee.toFixed(2)}</td>
+                  </tr>
+                  ${nstpUnits > 0 ? `
+                  <tr>
+                    <td class="py-1">NSTP (${nstpUnits} units):</td>
+                    <td class="py-1 text-right">₱${totalNSTPFee.toFixed(2)}</td>
+                  </tr>
+                  ` : ''}
+                </table>
+              </div>
+            </div>
+
+            <!-- Right Column - Payment Plan -->
+            <div class="flex-1">
+              <div class="border rounded p-4 bg-gray-50 h-full">
+                <h3 class="font-semibold mb-3 text-center">Payment Plan</h3>
+                ${breakdownHTML}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs text-gray-500">
+            <p>Assigned on: ${new Date(payment.assigned_at).toLocaleString()}</p>
+            <p>Assigned by: ${payment.assigned_by}</p>
+          </div>
+        `;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        alert('Failed to load payment details');
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching payment details:', error);
+      alert('Error loading payment details');
+    });
+}
+
+// Close modal function
+function closePaymentDetailsModal() {
+  const modal = document.getElementById('paymentDetailsModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+// Update DOMContentLoaded to fetch assigned payments
+document.addEventListener("DOMContentLoaded", () => {
+  lucide.createIcons();
+  fetchPendingApprovals();
+  fetchAssignedPayments();
+  loadPaymentSchemes(); // If you have a schemes list to display
+});
+
+</script>
+
 </body>
 </html>
