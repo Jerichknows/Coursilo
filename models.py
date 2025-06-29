@@ -157,7 +157,8 @@ class TeachingLoadSubject(db.Model):
 class TeachingLoad(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     year_semester_id = db.Column(db.Integer, db.ForeignKey('year_semester.id'), nullable=False)
-    program_id = db.Column(db.Integer, db.ForeignKey('program.id'), nullable=False)
+    program_id = db.Column(db.Integer, db.ForeignKey('program.id'), nullable=True)  # Changed to nullable
+    department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)  # Added
     submitted_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     submission_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     status = db.Column(db.String(20), default='pending')  # pending, approved, denied
@@ -167,9 +168,10 @@ class TeachingLoad(db.Model):
     # Relationships
     year_semester = db.relationship('YearSemester', backref='teaching_loads')
     program = db.relationship('Program', backref='teaching_loads')
+    department = db.relationship('Department', backref='teaching_loads')  # Added
     submitted_by_user = db.relationship('User', foreign_keys=[submitted_by], backref='submitted_teaching_loads')
     subjects = db.relationship('TeachingLoadSubject', backref='teaching_load', cascade='all, delete-orphan')
-
+    
 class PaymentScheme(db.Model):
 
     __tablename__ = 'payment_schemes'
@@ -217,7 +219,7 @@ class AuditLog(db.Model):
     user_agent = db.Column(db.String(200), nullable=True)
 
     user = db.relationship('User', backref='audit_logs')
-    
+
     def to_dict(self):
         from timezone_config import PH_TZ  # Local import to avoid circular dependencies
 

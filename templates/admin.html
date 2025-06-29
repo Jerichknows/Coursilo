@@ -17,6 +17,7 @@
         }
       }
     };
+
   </script>
 
   <!-- Lucide Icons -->
@@ -32,6 +33,28 @@
     }
     .content-container.active {
       display: block;
+    }
+    #programsCheckboxContainer::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #programsCheckboxContainer::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    #programsCheckboxContainer::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    #programsCheckboxContainer::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    /* Hover effect for program items */
+    #programsCheckboxContainer div:hover {
+      background-color: #f8fafc;
     }
   </style>
 </head>
@@ -161,7 +184,6 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP address</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -176,7 +198,6 @@
         </div>
       </div>
 
-      <!-- Manage Users Content -->
       <div id="manageUsers" class="content-container">
         <div class="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
           <div class="p-6">
@@ -192,7 +213,70 @@
                 <input type="text" id="searchUser" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <i data-lucide="search" class="absolute left-3 top-2.5 text-gray-400"></i>
               </div>
+              <button id="createUserBtn" class="flex items-center gap-2 px-4 py-2 bg-action text-white rounded-lg hover:bg-action-dark transition-colors">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                Create User
+              </button>
             </div>
+
+            <!-- Create User Modal (hidden by default) -->
+            <div id="createUserModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+              <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Create New User</h3>
+                    <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700">
+                      <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                  </div>
+                  <form id="userForm" class="space-y-4">
+                    <div>
+                      <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                      <input type="text" id="firstName" name="firstName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                      <input type="text" id="lastName" name="lastName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                      <input type="email" id="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                      <input type="password" id="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label for="userType" class="block text-sm font-medium text-gray-700">Role</label>
+                      <select id="userType" name="userType" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="dean">Dean</option>
+                        <option value="program-head">Program Head</option>
+                      </select>
+                    </div>
+                    <div id="departmentField" class="hidden">
+                      <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+                      <select id="department" name="department" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <!-- Departments will be loaded via JS -->
+                      </select>
+                    </div>
+                    <div id="programsField" class="hidden">
+                      <label class="block text-sm font-medium text-gray-700 mb-2">Assigned Programs</label>
+                      <div id="programsCheckboxContainer" class="space-y-2 max-h-60 overflow-y-auto p-2 border border-gray-200 rounded-md">
+                        <!-- Programs checkboxes will be loaded here via JS -->
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-4">
+                      <button type="button" id="cancelCreateBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                      <button type="submit" class="px-4 py-2 bg-action text-white rounded-md hover:bg-action-dark">Create User</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Users Table -->
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200" id="usersTable">
                 <thead class="bg-gray-50">
@@ -201,6 +285,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200" id="usersTableBody">
@@ -1011,8 +1096,12 @@ async function deleteYearSemester(id) {
       method: 'DELETE'
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      throw new Error('Failed to delete year/semester');
+      // Show the specific error from the backend
+      alert(result.error || 'Failed to delete year/semester');
+      return;
     }
 
     // Refresh the table
@@ -1020,14 +1109,12 @@ async function deleteYearSemester(id) {
 
     // Show success message
     alert('Year/Semester deleted successfully!');
-
-    return await response.json();
   } catch (error) {
     console.error('Error deleting year/semester:', error);
-    alert('Failed to delete year/semester');
-    throw error;
+    alert('An unexpected error occurred.');
   }
 }
+
 
 // Add event listeners to year/semester buttons
 function addYearSemesterButtonListeners() {
@@ -1137,7 +1224,6 @@ document.querySelector('#subjectTypeForm').addEventListener('submit', async func
   }
 });
 
-// Delete subject type
 function addDeleteListeners() {
   document.querySelectorAll('.delete-subject-type').forEach(button => {
     button.addEventListener('click', async function (e) {
@@ -1147,7 +1233,7 @@ function addDeleteListeners() {
       if (!confirm('Are you sure you want to delete this subject type?')) return;
 
       try {
-        const res = await fetch(`//subject-types/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/subject-types/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete subject type');
         await loadSubjectTypes();
       } catch (error) {
@@ -1157,6 +1243,7 @@ function addDeleteListeners() {
     });
   });
 }
+
 
 document.addEventListener('DOMContentLoaded', loadSubjectTypes);
 
@@ -1275,7 +1362,6 @@ document.addEventListener('DOMContentLoaded', () => {
 const inputClass = "border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5";
 document.querySelectorAll('.input-field').forEach(el => el.className = inputClass);
 
-
 // Load and display department-subject tables
 async function loadSubjectsByDepartment() {
   try {
@@ -1299,13 +1385,14 @@ async function loadSubjectsByDepartment() {
                 <th class="px-3 py-2">Code</th>
                 <th class="px-3 py-2">Name</th>
                 <th class="px-3 py-2">Year</th>
-                <th class="px-3 py-2">lecture</th>
+                <th class="px-3 py-2">Lecture</th>
                 <th class="px-3 py-2">Comp Lab</th>
                 <th class="px-3 py-2">Laboratory</th>
                 <th class="px-3 py-2">CL</th>
                 <th class="px-3 py-2">C</th>
                 <th class="px-3 py-2">Type</th>
                 <th class="px-3 py-2">NSTP</th>
+                <th class="px-3 py-2">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -1324,6 +1411,9 @@ async function loadSubjectsByDepartment() {
             <td class="px-3 py-2">${subject.clinic}</td>
             <td class="px-3 py-2">${subject.subject_type}</td>
             <td class="px-3 py-2">${subject.is_nstp ? 'Yes' : 'No'}</td>
+            <td class="px-3 py-2">
+              <button class="text-red-600 hover:underline delete-subject-btn" data-code="${subject.subject_code}">Delete</button>
+            </td>
           </tr>
         `;
       });
@@ -1343,14 +1433,404 @@ async function loadSubjectsByDepartment() {
         pagination: { el: '.swiper-pagination', clickable: true },
       });
     }
+
   } catch (error) {
     console.error('Error loading department subjects:', error);
   }
 }
 
-// Fetch and display users from backend
+// Attach global event listener using event delegation
+document.addEventListener('click', async function (e) {
+  if (e.target && e.target.classList.contains('delete-subject-btn')) {
+    const subjectCode = e.target.getAttribute('data-code');
+
+    if (!confirm('Are you sure you want to delete this subject?')) return;
+
+    try {
+      const res = await fetch(`/delete_subject/${subjectCode}`, { method: 'DELETE' });
+      const result = await res.json();
+
+      if (result.success) {
+        alert('Subject deleted successfully!');
+        await loadSubjectsByDepartment(); // Reload the table
+      } else {
+        alert(result.message || 'Failed to delete subject.');
+      }
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      alert('An error occurred while deleting the subject.');
+    }
+  }
+});
+
+// Initial load
+loadSubjectsByDepartment();
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
+  lucide.createIcons();
+
+  // Modal elements
+  const createUserBtn = document.getElementById('createUserBtn');
+  const createUserModal = document.getElementById('createUserModal');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const cancelCreateBtn = document.getElementById('cancelCreateBtn');
+  const userForm = document.getElementById('userForm');
+  const userTypeSelect = document.getElementById('userType');
+  const departmentField = document.getElementById('departmentField');
+  const programsField = document.getElementById('programsField');
+
+  // Show modal when Create User button is clicked
+  createUserBtn.addEventListener('click', function() {
+    createUserModal.classList.remove('hidden');
+    loadDepartments();
+  });
+
+  // Close modal
+  function closeModal() {
+    createUserModal.classList.add('hidden');
+    userForm.reset();
+    departmentField.classList.add('hidden');
+    programsField.classList.add('hidden');
+  }
+
+  closeModalBtn.addEventListener('click', closeModal);
+  cancelCreateBtn.addEventListener('click', closeModal);
+
+  // Show/hide department and programs fields based on role selection
+  userTypeSelect.addEventListener('change', function() {
+    const role = this.value;
+
+    if (role === 'dean' || role === 'program-head') {
+      departmentField.classList.remove('hidden');
+      loadDepartments();
+
+      if (role === 'program-head') {
+        programsField.classList.remove('hidden');
+        loadPrograms();
+      } else {
+        programsField.classList.add('hidden');
+      }
+    } else {
+      departmentField.classList.add('hidden');
+      programsField.classList.add('hidden');
+    }
+  });
+
+  // Load departments for dropdown
+  function loadDepartments() {
+    fetch('/get_departments')
+      .then(response => response.json())
+      .then(departments => {
+        const departmentSelect = document.getElementById('department');
+        departmentSelect.innerHTML = '<option value="">Select Department</option>';
+
+        departments.forEach(dept => {
+          const option = document.createElement('option');
+          option.value = dept.id;
+          option.textContent = dept.department;
+          departmentSelect.appendChild(option);
+        });
+      });
+  }
+
+  // Load programs as checkboxes
+  function loadPrograms() {
+    fetch('/get_programs')
+      .then(response => response.json())
+      .then(programs => {
+        const container = document.getElementById('programsCheckboxContainer');
+        container.innerHTML = '';
+
+        programs.forEach(program => {
+          const div = document.createElement('div');
+          div.className = 'flex items-center';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `program-${program.id}`;
+          checkbox.name = 'programs';
+          checkbox.value = program.id;
+          checkbox.className = 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded';
+
+          const label = document.createElement('label');
+          label.htmlFor = `program-${program.id}`;
+          label.className = 'ml-2 text-sm text-gray-700';
+          label.textContent = `${program.program_code} - ${program.program_name}`;
+
+          div.appendChild(checkbox);
+          div.appendChild(label);
+          container.appendChild(div);
+        });
+      });
+  }
+
+  // Update form submission handler
+  userForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // Get selected program IDs
+    const selectedPrograms = Array.from(
+      document.querySelectorAll('#programsCheckboxContainer input[type="checkbox"]:checked')
+    ).map(checkbox => checkbox.value);
+
+    const formData = {
+      first_name: document.getElementById('firstName').value,
+      last_name: document.getElementById('lastName').value,
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value,
+      user_type: document.getElementById('userType').value,
+      department_id: document.getElementById('userType').value === 'dean' ||
+                     document.getElementById('userType').value === 'program-head'
+                     ? document.getElementById('department').value : null,
+      programs: selectedPrograms.join(',')
+    };
+
+    fetch('/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('User created successfully!');
+        closeModal();
+        loadUsers(); // Refresh the users table
+      } else {
+        alert('Error creating user: ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error creating user');
+    });
+  });
+
+  // Combined loadUsers function with all features
+  function loadUsers() {
+    // First check if current user is default admin
+    fetch('/current_user')
+      .then(response => response.json())
+      .then(currentUserData => {
+        const isDefaultAdmin = currentUserData.user && currentUserData.user.email === 'admin.admin@gmail.com';
+
+        // Then fetch all users
+        fetch('/users')
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const usersTableBody = document.getElementById('usersTableBody');
+              usersTableBody.innerHTML = '';
+
+              data.users.forEach(user => {
+                const row = document.createElement('tr');
+
+                // Name column
+                const nameCell = document.createElement('td');
+                nameCell.className = 'px-6 py-4 whitespace-nowrap';
+                nameCell.innerHTML = `
+                  <div class="flex items-center">
+                    <div class="ml-2">
+                      <div class="text-sm font-medium text-gray-900">${user.first_name} ${user.last_name}</div>
+                    </div>
+                  </div>
+                `;
+
+                // Email column
+                const emailCell = document.createElement('td');
+                emailCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                emailCell.textContent = user.email;
+
+                // Role column
+                const roleCell = document.createElement('td');
+                roleCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                roleCell.textContent = user.user_type;
+
+                // Status column
+                const statusCell = document.createElement('td');
+                statusCell.className = 'px-6 py-4 whitespace-nowrap';
+                const statusBadge = document.createElement('span');
+                statusBadge.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`;
+                statusBadge.textContent = user.is_active ? 'Active' : 'Inactive';
+                statusCell.appendChild(statusBadge);
+
+                // Actions column
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium';
+
+                // Create action buttons container
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex space-x-2';
+
+                // Edit button (visible to all admins)
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-blue-600 hover:text-blue-900';
+                editBtn.innerHTML = '<i data-lucide="edit" class="h-4 w-4"></i>';
+                editBtn.addEventListener('click', () => editUser(user.id));
+
+                // Delete button (only visible to default admin)
+                if (isDefaultAdmin) {
+                  const deleteBtn = document.createElement('button');
+                  deleteBtn.className = 'text-red-600 hover:text-red-900';
+                  deleteBtn.innerHTML = '<i data-lucide="trash-2" class="h-4 w-4"></i>';
+                  deleteBtn.addEventListener('click', () => deleteUser(user.id, user.email));
+                  actionsDiv.appendChild(deleteBtn);
+                }
+
+                actionsDiv.appendChild(editBtn);
+                actionsCell.appendChild(actionsDiv);
+
+                // Add all cells to row
+                row.appendChild(nameCell);
+                row.appendChild(emailCell);
+                row.appendChild(roleCell);
+                row.appendChild(statusCell);
+                row.appendChild(actionsCell);
+
+                usersTableBody.appendChild(row);
+              });
+
+              // Refresh Lucide icons after adding new ones
+              lucide.createIcons();
+            } else {
+              alert(data.message || 'Failed to load users');
+            }
+          })
+          .catch(error => {
+            console.error('Error loading users:', error);
+            alert('An error occurred while loading users');
+          });
+      })
+      .catch(error => {
+        console.error('Error checking current user:', error);
+      });
+  }
+
+  // Delete user function with protection for default admin
+  function deleteUser(userId, userEmail) {
+    const DEFAULT_ADMIN_EMAIL = 'admin.admin@gmail.com';
+
+    if (userEmail === DEFAULT_ADMIN_EMAIL) {
+      alert('Cannot delete the default admin account');
+      return;
+    }
+
+    if (confirm('Are you sure you want to delete this user?')) {
+      fetch(`/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include' // Important for session-based auth
+      })
+      .then(response => {
+        if (response.status === 403) {
+          return response.json().then(data => {
+            throw new Error(data.message);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('User deleted successfully');
+          loadUsers(); // Refresh the users table
+        } else {
+          alert(data.message || 'Failed to delete user');
+        }
+      })
+      .catch(error => {
+        alert(error.message || 'Error deleting user');
+      });
+    }
+  }
+
+  // Search functionality
+  document.getElementById('searchUser').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#usersTableBody tr');
+
+    rows.forEach(row => {
+      const name = row.cells[0].textContent.toLowerCase();
+      const email = row.cells[1].textContent.toLowerCase();
+      const role = row.cells[2].textContent.toLowerCase();
+
+      if (name.includes(searchTerm) || email.includes(searchTerm) || role.includes(searchTerm)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+});
+
+// Edit user function
+function editUser(userId) {
+  // Implement edit functionality
+  console.log('Edit user:', userId);
+  // You would fetch the user data and populate the modal similar to create
+}
+
+// Delete user function with protection for default admin
+function deleteUser(userId, userEmail) {
+  // Default admin credentials
+  const DEFAULT_ADMIN_EMAIL = 'admin.admin@gmail.com';
+
+  if (userEmail === DEFAULT_ADMIN_EMAIL) {
+    alert('Cannot delete the default admin account');
+    return;
+  }
+
+  if (confirm('Are you sure you want to delete this user?')) {
+    fetch(`/users/${userId}`, {
+      method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('User deleted successfully');
+        // Refresh the users table
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+      } else {
+        alert('Error deleting user: ' + (data.message || 'Unknown error'));
+      }
+    });
+  }
+}
+
+// Initialize when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
+  lucide.createIcons();
+
+  // Load users
+  loadUsers();
+
+  // Check if current user is default admin to show/hide create button
+  fetch('/current_user')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.user) {
+        const DEFAULT_ADMIN_EMAIL = "admin.admin@gmail.com";
+        const createUserBtn = document.getElementById('createUserBtn');
+
+        if (data.user.email !== DEFAULT_ADMIN_EMAIL && createUserBtn) {
+          createUserBtn.style.display = 'none';
+        }
+      }
+    });
+});
+// Fetch and display users from backend with delete button for admin
 async function loadUsers() {
   try {
+    // First check if current user is default admin
+    const currentUserRes = await fetch('/current_user');
+    const currentUserData = await currentUserRes.json();
+    const isDefaultAdmin = currentUserData.user && currentUserData.user.email === 'admin.admin@gmail.com';
+
+    // Then fetch all users
     const res = await fetch("/users");
     const data = await res.json();
 
@@ -1377,17 +1857,66 @@ async function loadUsers() {
               ${user.is_active ? 'Active' : 'Inactive'}
             </span>
           </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <div class="flex space-x-2">
+              ${isDefaultAdmin ? `
+                <button onclick="deleteUser('${user.id}', '${user.email}')" class="text-red-600 hover:text-red-900">
+                  <i data-lucide="trash-2" class="h-4 w-4"></i>
+                </button>
+              ` : ''}
+            </div>
+          </td>
         `;
         usersTableBody.appendChild(row);
       });
+
+      // Refresh Lucide icons
+      lucide.createIcons();
     } else {
       alert(data.message);
     }
   } catch (error) {
-    console.error("Error fetching users:", error);
-    alert("An error occurred while fetching users.");
+    console.error("Error:", error);
+    alert("An error occurred while loading users.");
   }
 }
+
+// Delete user function with protection for default admin
+function deleteUser(userId, userEmail) {
+  const DEFAULT_ADMIN_EMAIL = 'admin.admin@gmail.com';
+
+  if (userEmail === DEFAULT_ADMIN_EMAIL) {
+    alert('Cannot delete the default admin account');
+    return;
+  }
+
+  if (confirm('Are you sure you want to delete this user?')) {
+    fetch(`/users/${userId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    .then(response => {
+      if (response.status === 403) {
+        throw new Error('Only default admin can delete users');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        alert('User deleted successfully');
+        loadUsers(); // Refresh the table
+      } else {
+        alert(data.message || 'Failed to delete user');
+      }
+    })
+    .catch(error => {
+      alert(error.message || 'Error deleting user');
+    });
+  }
+}
+
+// Load users when page loads
+document.addEventListener("DOMContentLoaded", loadUsers);
 
 // Load users when the page loads
 document.addEventListener("DOMContentLoaded", loadUsers);
@@ -1676,7 +2205,730 @@ function showAlert(message, type = 'success') {
         alertDiv.remove();
     }, 5000);
 }
+// ======================
+// GLOBAL EDIT FUNCTIONALITY
+// ======================
+
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded', function() {
+  lucide.createIcons();
+});
+
+// Global edit modal container
+const editModal = document.createElement('div');
+editModal.id = 'editModal';
+editModal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50';
+editModal.innerHTML = `
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+    <button id="closeEditModal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+    <div id="editModalContent" class="p-4"></div>
+  </div>
+`;
+document.body.appendChild(editModal);
+
+// Close modal handlers
+document.getElementById('closeEditModal')?.addEventListener('click', () => {
+  editModal.classList.add('hidden');
+});
+
+editModal.addEventListener('click', (e) => {
+  if (e.target === editModal) {
+    editModal.classList.add('hidden');
+  }
+});
+
+// ======================
+// DEPARTMENT EDIT FUNCTIONALITY
+// ======================
+
+function setupDepartmentEdit() {
+  const editButtons = document.querySelectorAll('[data-department-id]');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const departmentId = button.getAttribute('data-department-id');
+
+      try {
+        // Fetch department data
+        const response = await fetch(`/api/departments/${departmentId}`);
+        const department = await response.json();
+
+        // Populate edit form
+        const editForm = `
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-4">Edit Department</h3>
+            <form id="departmentEditForm" class="space-y-4">
+              <input type="hidden" name="id" value="${department.id}">
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department Code</label>
+                <input type="text" name="code" value="${department.department_code}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+                <input type="text" name="name" value="${department.department}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="editModal.classList.add('hidden')"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Cancel
+                </button>
+                <button type="submit"
+                  class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('editModalContent').innerHTML = editForm;
+        editModal.classList.remove('hidden');
+
+        // Handle form submission
+        document.getElementById('departmentEditForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+
+          try {
+            const response = await fetch(`/api/departments/${departmentId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              alert('Department updated successfully!');
+              editModal.classList.add('hidden');
+              loadDepartments(); // Refresh department list
+            } else {
+              alert(result.message || 'Failed to update department');
+            }
+          } catch (error) {
+            console.error('Error updating department:', error);
+            alert('An error occurred while updating the department');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error fetching department:', error);
+        alert('Failed to load department data');
+      }
+    });
+  });
+}
+
+// ======================
+// PROGRAM EDIT FUNCTIONALITY
+// ======================
+
+function setupProgramEdit() {
+  const editButtons = document.querySelectorAll('[data-program-id]');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const programId = button.getAttribute('data-program-id');
+
+      try {
+        // Fetch program data
+        const response = await fetch(`/api/programs/${programId}`);
+        const program = await response.json();
+
+        // Fetch departments for dropdown
+        const deptResponse = await fetch('/api/departments');
+        const departments = await deptResponse.json();
+
+        // Populate edit form
+        let deptOptions = '';
+        departments.forEach(dept => {
+          deptOptions += `<option value="${dept.id}" ${dept.id === program.department_id ? 'selected' : ''}>${dept.department} (${dept.department_code})</option>`;
+        });
+
+        const editForm = `
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-4">Edit Program</h3>
+            <form id="programEditForm" class="space-y-4">
+              <input type="hidden" name="id" value="${program.id}">
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Program Code</label>
+                <input type="text" name="code" value="${program.program_code}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Program Name</label>
+                <input type="text" name="name" value="${program.program_name}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select name="department_id" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">Select Department</option>
+                  ${deptOptions}
+                </select>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="editModal.classList.add('hidden')"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Cancel
+                </button>
+                <button type="submit"
+                  class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('editModalContent').innerHTML = editForm;
+        editModal.classList.remove('hidden');
+
+        // Handle form submission
+        document.getElementById('programEditForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+
+          try {
+            const response = await fetch(`/api/programs/${programId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              alert('Program updated successfully!');
+              editModal.classList.add('hidden');
+              loadPrograms(); // Refresh program list
+            } else {
+              alert(result.message || 'Failed to update program');
+            }
+          } catch (error) {
+            console.error('Error updating program:', error);
+            alert('An error occurred while updating the program');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error fetching program:', error);
+        alert('Failed to load program data');
+      }
+    });
+  });
+}
+
+// ======================
+// SUBJECT TYPE EDIT FUNCTIONALITY
+// ======================
+
+function setupSubjectTypeEdit() {
+  const editButtons = document.querySelectorAll('[data-subject-type-id]');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const subjectTypeId = button.getAttribute('data-subject-type-id');
+
+      try {
+        // Fetch subject type data
+        const response = await fetch(`/api/subject-types/${subjectTypeId}`);
+        const subjectType = await response.json();
+
+        // Populate edit form
+        const editForm = `
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-4">Edit Subject Type</h3>
+            <form id="subjectTypeEditForm" class="space-y-4">
+              <input type="hidden" name="id" value="${subjectType.id}">
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subject Type Name</label>
+                <input type="text" name="name" value="${subjectType.name}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="editModal.classList.add('hidden')"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Cancel
+                </button>
+                <button type="submit"
+                  class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('editModalContent').innerHTML = editForm;
+        editModal.classList.remove('hidden');
+
+        // Handle form submission
+        document.getElementById('subjectTypeEditForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+
+          try {
+            const response = await fetch(`/api/subject-types/${subjectTypeId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              alert('Subject type updated successfully!');
+              editModal.classList.add('hidden');
+              loadSubjectTypes(); // Refresh subject type list
+            } else {
+              alert(result.message || 'Failed to update subject type');
+            }
+          } catch (error) {
+            console.error('Error updating subject type:', error);
+            alert('An error occurred while updating the subject type');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error fetching subject type:', error);
+        alert('Failed to load subject type data');
+      }
+    });
+  });
+}
+
+// ======================
+// SUBJECT EDIT FUNCTIONALITY
+// ======================
+
+function setupSubjectEdit() {
+  const editButtons = document.querySelectorAll('[data-subject-id]');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const subjectId = button.getAttribute('data-subject-id');
+
+      try {
+        // Fetch subject data
+        const response = await fetch(`/api/subjects/${subjectId}`);
+        const subject = await response.json();
+
+        // Fetch departments and subject types for dropdowns
+        const [deptResponse, typeResponse] = await Promise.all([
+          fetch('/api/departments'),
+          fetch('/api/subject-types')
+        ]);
+
+        const departments = await deptResponse.json();
+        const subjectTypes = await typeResponse.json();
+
+        // Populate edit form
+        let deptOptions = '';
+        departments.forEach(dept => {
+          deptOptions += `<option value="${dept.id}" ${dept.id === subject.department_id ? 'selected' : ''}>${dept.department} (${dept.department_code})</option>`;
+        });
+
+        let typeOptions = '';
+        subjectTypes.forEach(type => {
+          typeOptions += `<option value="${type.id}" ${type.id === subject.subject_type_id ? 'selected' : ''}>${type.name}</option>`;
+        });
+
+        const editForm = `
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-4">Edit Subject</h3>
+            <form id="subjectEditForm" class="space-y-4">
+              <input type="hidden" name="id" value="${subject.id}">
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Subject Code</label>
+                  <input type="text" name="code" value="${subject.subject_code}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
+                  <input type="text" name="name" value="${subject.subject_name}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
+                  <select name="year_level" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <option value="">Select Year Level</option>
+                    <option value="1st year" ${subject.year_level === '1st year' ? 'selected' : ''}>1st Year</option>
+                    <option value="2nd year" ${subject.year_level === '2nd year' ? 'selected' : ''}>2nd Year</option>
+                    <option value="3rd year" ${subject.year_level === '3rd year' ? 'selected' : ''}>3rd Year</option>
+                    <option value="4th year" ${subject.year_level === '4th year' ? 'selected' : ''}>4th Year</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <select name="department_id" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <option value="">Select Department</option>
+                    ${deptOptions}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Lecture Hours</label>
+                  <input type="number" name="lecture" value="${subject.lecture}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Computer Lab Hours</label>
+                  <input type="number" name="com_lab" value="${subject.com_lab}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Lab Hours</label>
+                  <input type="number" name="laboratory" value="${subject.laboratory}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">CL Hours</label>
+                  <input type="number" name="school_lecture" value="${subject.school_lecture}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">C Hours</label>
+                  <input type="number" name="clinic" value="${subject.clinic}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Subject Type</label>
+                  <select name="subject_type_id" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <option value="">Select Subject Type</option>
+                    ${typeOptions}
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center">
+                <input type="checkbox" name="is_nstp" id="is_nstp" ${subject.is_nstp ? 'checked' : ''}
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="is_nstp" class="ml-2 text-sm font-medium text-gray-700">NSTP Subject</label>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="editModal.classList.add('hidden')"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Cancel
+                </button>
+                <button type="submit"
+                  class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('editModalContent').innerHTML = editForm;
+        editModal.classList.remove('hidden');
+
+        // Handle form submission
+        document.getElementById('subjectEditForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+          data.is_nstp = document.getElementById('is_nstp').checked;
+
+          try {
+            const response = await fetch(`/api/subjects/${subjectId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              alert('Subject updated successfully!');
+              editModal.classList.add('hidden');
+              loadSubjectsByDepartment(); // Refresh subject list
+            } else {
+              alert(result.message || 'Failed to update subject');
+            }
+          } catch (error) {
+            console.error('Error updating subject:', error);
+            alert('An error occurred while updating the subject');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error fetching subject:', error);
+        alert('Failed to load subject data');
+      }
+    });
+  });
+}
+
+// ======================
+// USER EDIT FUNCTIONALITY
+// ======================
+
+function setupUserEdit() {
+  const editButtons = document.querySelectorAll('[data-user-id]');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const userId = button.getAttribute('data-user-id');
+
+      try {
+        // Fetch user data
+        const response = await fetch(`/api/users/${userId}`);
+        const user = await response.json();
+
+        // Populate edit form
+        const editForm = `
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-4">Edit User</h3>
+            <form id="userEditForm" class="space-y-4">
+              <input type="hidden" name="id" value="${user.id}">
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input type="text" name="first_name" value="${user.first_name}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input type="text" name="last_name" value="${user.last_name}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" name="email" value="${user.email}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+                  <select name="user_type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <option value="admin" ${user.user_type === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="dean" ${user.user_type === 'dean' ? 'selected' : ''}>Dean</option>
+                    <option value="program-head" ${user.user_type === 'program-head' ? 'selected' : ''}>Program Head</option>
+                    <option value="faculty" ${user.user_type === 'faculty' ? 'selected' : ''}>Faculty</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select name="is_active" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="true" ${user.is_active ? 'selected' : ''}>Active</option>
+                    <option value="false" ${!user.is_active ? 'selected' : ''}>Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Department selection (for deans/program heads) -->
+              <div id="userDepartmentField" class="${user.user_type === 'admin' || user.user_type === 'faculty' ? 'hidden' : ''}">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select name="department_id" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">Select Department</option>
+                  <!-- Departments will be loaded via JavaScript -->
+                </select>
+              </div>
+
+              <!-- Program selection (for program heads) -->
+              <div id="userProgramsField" class="${user.user_type !== 'program-head' ? 'hidden' : ''}">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Assigned Programs</label>
+                <div id="programCheckboxes" class="space-y-2">
+                  <!-- Program checkboxes will be loaded via JavaScript -->
+                </div>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="editModal.classList.add('hidden')"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Cancel
+                </button>
+                <button type="submit"
+                  class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('editModalContent').innerHTML = editForm;
+        editModal.classList.remove('hidden');
+
+        // Load departments and programs for user edit
+        loadDepartmentsForUserEdit(user);
+        loadProgramsForUserEdit(user);
+
+        // Show/hide fields based on user type
+        document.querySelector('select[name="user_type"]').addEventListener('change', function() {
+          const userType = this.value;
+          const deptField = document.getElementById('userDepartmentField');
+          const programsField = document.getElementById('userProgramsField');
+
+          if (userType === 'dean' || userType === 'program-head') {
+            deptField.classList.remove('hidden');
+          } else {
+            deptField.classList.add('hidden');
+          }
+
+          if (userType === 'program-head') {
+            programsField.classList.remove('hidden');
+          } else {
+            programsField.classList.add('hidden');
+          }
+        });
+
+        // Handle form submission
+        document.getElementById('userEditForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+
+          // Get selected programs for program heads
+          if (data.user_type === 'program-head') {
+            const programCheckboxes = document.querySelectorAll('#programCheckboxes input[type="checkbox"]:checked');
+            data.programs = Array.from(programCheckboxes).map(cb => cb.value);
+          }
+
+          try {
+            const response = await fetch(`/api/users/${userId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              alert('User updated successfully!');
+              editModal.classList.add('hidden');
+              loadUsers(); // Refresh user list
+            } else {
+              alert(result.message || 'Failed to update user');
+            }
+          } catch (error) {
+            console.error('Error updating user:', error);
+            alert('An error occurred while updating the user');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        alert('Failed to load user data');
+      }
+    });
+  });
+}
+
+async function loadDepartmentsForUserEdit(user) {
+  try {
+    const response = await fetch('/api/departments');
+    const departments = await response.json();
+
+    const select = document.querySelector('#userDepartmentField select');
+    select.innerHTML = '<option value="">Select Department</option>';
+
+    departments.forEach(dept => {
+      const option = document.createElement('option');
+      option.value = dept.id;
+      option.textContent = `${dept.department} (${dept.department_code})`;
+      if (user.department_id && user.department_id == dept.id) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Error loading departments:', error);
+  }
+}
+
+async function loadProgramsForUserEdit(user) {
+  try {
+    const response = await fetch('/api/programs');
+    const programs = await response.json();
+
+    const container = document.getElementById('programCheckboxes');
+    container.innerHTML = '';
+
+    programs.forEach(program => {
+      const div = document.createElement('div');
+      div.className = 'flex items-center';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `program-${program.id}`;
+      checkbox.name = 'programs';
+      checkbox.value = program.id;
+      checkbox.className = 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded';
+
+      // Check if user is assigned to this program
+      if (user.programs && user.programs.some(p => p.id == program.id)) {
+        checkbox.checked = true;
+      }
+
+      const label = document.createElement('label');
+      label.htmlFor = `program-${program.id}`;
+      label.className = 'ml-2 block text-sm text-gray-700';
+      label.textContent = `${program.program_name} (${program.program_code})`;
+
+      div.appendChild(checkbox);
+      div.appendChild(label);
+      container.appendChild(div);
+    });
+  } catch (error) {
+    console.error('Error loading programs:', error);
+  }
+}
+
+
 </script>
-<script src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>

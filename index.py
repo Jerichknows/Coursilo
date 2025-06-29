@@ -137,11 +137,14 @@ def delete_department(id):
     if not dept:
         return jsonify({'success': False, 'message': 'Department not found'}), 404
 
+    # Log first before deleting
+    log_important_action("Department deleted", f"ID: {id} - {dept.department}")
+
     db.session.delete(dept)
     db.session.commit()
 
-    log_important_action("Department deleted", f"ID: {id} - {dept.department}")
     return jsonify({'success': True, 'message': 'Department deleted'})
+
 # ------------------- PROGRAMS -------------------
 @app.route('/add_program', methods=['POST'])
 def add_program():
@@ -185,9 +188,13 @@ def delete_program(id):
     if not program:
         return jsonify({'success': False, 'message': 'Program not found'}), 404
 
+    # Log before deletion
+    log_important_action("Program deleted", f"ID: {id} - {program.program_code} - {program.program_name}")
+
     db.session.delete(program)
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'message': 'Program deleted successfully'})
+
 
 # ------------------- YEAR/SEMESTERS -------------------
 @app.route('/year-semester', methods=['GET'])
@@ -228,12 +235,25 @@ def toggle_year_semester(id):
 @app.route('/year-semester/<int:id>', methods=['DELETE'])
 def delete_year_semester(id):
     entry = YearSemester.query.get_or_404(id)
+
     if entry.is_active:
         return jsonify({'error': 'Cannot delete an active semester'}), 400
+
+    # Check for dependent records
+    from models import TeachingLoad  # Import your model if needed
+    dependent_loads = TeachingLoad.query.filter_by(year_semester_id=id).all()
+
+    if dependent_loads:
+        return jsonify({'error': 'Cannot delete this year/semester because it is still assigned to teaching loads.'}), 400
+
+    log_important_action("Year/Semester deleted", f"ID: {id} - {entry.school_year} {entry.semester}")
 
     db.session.delete(entry)
     db.session.commit()
     return jsonify({'message': 'Deleted successfully'}), 200
+
+
+
 
 # ------------------- SUBJECT TYPES -------------------
 @app.route('/subject-types', methods=['GET'])
@@ -257,9 +277,13 @@ def add_subject_type():
 @app.route('/subject-types/<int:type_id>', methods=['DELETE'])
 def delete_subject_type(type_id):
     subject_type = SubjectType.query.get_or_404(type_id)
+
+    log_important_action("Subject Type deleted", f"ID: {type_id} - {subject_type.name}")
+
     db.session.delete(subject_type)
     db.session.commit()
     return jsonify({'message': 'Deleted successfully'})
+
 
 # ------------------- SUBJECTS -------------------
 @app.route('/get_subject_types', methods=['GET'])
@@ -322,6 +346,17 @@ def subjects_by_department():
 
     return jsonify({'departments': result})
 
+@app.route('/delete_subject/<string:subject_code>', methods=['DELETE'])
+def delete_subject(subject_code):
+    subject = Subject.query.filter_by(subject_code=subject_code).first()
+    if not subject:
+        return jsonify({'success': False, 'message': 'Subject not found'}), 404
+
+    log_important_action("Subject deleted", f"{subject.subject_code} - {subject.subject_name}")
+    db.session.delete(subject)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Subject deleted successfully'}), 200
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def show_login_page():
@@ -340,10 +375,12 @@ def show_login_page():
             session['role'] = user.user_type  # Assuming your model uses `user_type`
 
             # Role-based redirection
-            if user.user_type in ['dean', 'program-head']:
+            if user.user_type in ['program-head']:
                 redirect_url = url_for('index')
             elif user.user_type == 'admin':
                 redirect_url = url_for('admin')
+            elif user.user_type == 'dean':
+                redirect_url = url_for('dean')
             else:
                 return jsonify({"success": False, "message": "Unknown role"}), 400
 
@@ -433,15 +470,46 @@ def register():
         if not data:
             return jsonify({"success": False, "message": "No data provided"}), 400
 
-        # ... [your existing validation code] ...
+        # Get current user from session (assuming you're using Flask-Login or similar)
+        current_user_email = None
+        if 'user_id' in session:
+            current_user = User.query.get(session['user_id'])
+            if current_user:
+                current_user_email = current_user.email
 
+        # Only allow default admin to create users
+        DEFAULT_ADMIN_EMAIL = "admin.admin@gmail.com"
+        if current_user_email != DEFAULT_ADMIN_EMAIL:
+            return jsonify({
+                "success": False,
+                "message": "Only the default admin can create new users"
+            }), 403
+
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data["email"]).first()
+        if existing_user:
+            return jsonify({
+                "success": False,
+                "message": "Email already exists"
+            }), 400
+
+        # Validate required fields
+        required_fields = ["first_name", "last_name", "email", "password", "user_type"]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({
+                    "success": False,
+                    "message": f"Missing required field: {field}"
+                }), 400
+
+        # Create new user
         new_user = User(
             first_name=data["first_name"],
             last_name=data["last_name"],
             email=data["email"],
             user_type=data["user_type"],
             department_id=data.get("department_id"),
-            programs=",".join(data.get("programs", []))
+            programs=",".join(data.get("programs", [])) if data.get("programs") else None
         )
         new_user.set_password(data["password"])
 
@@ -458,7 +526,10 @@ def register():
 
     except Exception as e:
         db.session.rollback()
-        log_important_action("Registration failed", f"{data.get('email', 'unknown')}", status="failed")
+        log_important_action("Registration failed",
+                           f"{data.get('email', 'unknown')}",
+                           status="failed",
+                           metadata={"error": str(e)})
         return jsonify({
             "success": False,
             "message": "Registration failed",
@@ -485,6 +556,12 @@ def index():
     if 'user_id' not in session:
         return redirect(url_for('show_login_page'))
     return render_template('index.html')
+
+@app.route('/dean')
+def dean():
+    if 'user_id' not in session:
+        return redirect(url_for('show_login_page'))
+    return render_template('dean.html')
 
 @app.route('/year-semester-sorted', methods=['GET'])
 def get_sorted_year_semesters():
@@ -621,32 +698,101 @@ def get_subject_details(subject_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
 
+@app.route('/subjects_by_department_year')
+def subjects_by_department_year():
+    year_semester_id = request.args.get('year_semester_id')
+    department_id = request.args.get('department_id')
+    year_level = request.args.get('year_level')
+
+    try:
+        # Get subjects for this department and year level
+        subjects = db.session.execute(
+            db.select(Subject)
+            .filter_by(
+                department_id=department_id,
+                year_level=year_level
+            )
+        ).scalars().all()
+
+        # Convert to dictionary format
+        subjects_data = [s.to_dict() for s in subjects]
+
+        return jsonify({
+            'success': True,
+            'subjects': subjects_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+@app.route('/get_program_details/<int:program_id>')
+def get_program_details(program_id):
+    try:
+        program = db.session.get(Program, program_id)
+        if not program:
+            return jsonify({'success': False, 'message': 'Program not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'program': {
+                'id': program.id,
+                'department_id': program.department_id,
+                'name': program.name,
+                'code': program.code
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
 @app.route('/save_teaching_load', methods=['POST'])
 def save_teaching_load():
     data = request.get_json()
 
     try:
-        # Validate required fields
-        if not all(key in data for key in ['year_semester_id', 'program_id', 'subjects']):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-
-        # Get current user ID from session
+        # Get current user
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': 'User not authenticated'}), 401
 
-        user_id = session['user_id']
+        user = db.session.get(User, session['user_id'])
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
 
-        # Create a new TeachingLoad record
+        # Validate based on user role
+        user_role = user.user_type.lower()
+        is_dean = user_role == 'dean'
+        is_program_head = user_role == 'program-head'
+
+        if not is_dean and not is_program_head:
+            return jsonify({'success': False, 'message': 'Unauthorized user role'}), 403
+
+        # Validate required fields
+        if 'year_semester_id' not in data or 'subjects' not in data:
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
+        if is_dean and 'department_id' not in data:
+            return jsonify({'success': False, 'message': 'Department selection required for deans'}), 400
+        elif is_program_head and 'program_id' not in data:
+            return jsonify({'success': False, 'message': 'Program selection required for program heads'}), 400
+
+        # Create teaching load
         teaching_load = TeachingLoad(
             year_semester_id=data['year_semester_id'],
-            program_id=data['program_id'],
-            submitted_by=user_id,  # Use the user_id from session
-            status='pending'  # Add default status
+            submitted_by=user.id,
+            status='pending'
         )
-        db.session.add(teaching_load)
-        db.session.flush()  # To get the ID
 
-        # Create TeachingLoadSubject records for each subject
+        # Set department or program based on role
+        if is_dean:
+            teaching_load.department_id = data['department_id']
+        else:
+            teaching_load.program_id = data['program_id']
+
+        db.session.add(teaching_load)
+        db.session.flush()  # Get the ID
+
+        # Add subjects
         for subject_data in data['subjects']:
             # Calculate total units if not provided
             total_units = subject_data.get('total_units', 0)
@@ -673,7 +819,6 @@ def save_teaching_load():
 
         db.session.commit()
 
-        log_important_action("Batch load saved", f"Batch ID: {teaching_load.id} with {len(data['subjects'])} subjects")
         return jsonify({
             'success': True,
             'message': 'Teaching load saved successfully',
@@ -688,8 +833,8 @@ def save_teaching_load():
             'message': f"Failed to save teaching load: {str(e)}"
         }), 500
 
-@app.route('/get_saved_batches')
-def get_saved_batches():
+@app.route('/get_saved_batches_program')
+def get_saved_batches_program():
     try:
         # Only get unsubmitted teaching loads (e.g., status is 'draft' or 'saved')
         batches = db.session.query(
@@ -724,6 +869,89 @@ def get_saved_batches():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
 
+@app.route('/get_saved_batches')
+def get_saved_batches():
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+        user = db.session.get(User, session['user_id'])
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        user_role = user.user_type.lower()
+        is_dean = user_role == 'dean'
+        is_program_head = user_role == 'program-head'
+
+        # Base query
+        query = db.session.query(
+            TeachingLoad,
+            User,
+            Program,
+            Department
+        ).join(
+            User, TeachingLoad.submitted_by == User.id
+        ).outerjoin(
+            Program, TeachingLoad.program_id == Program.id
+        ).outerjoin(
+            Department, TeachingLoad.department_id == Department.id
+        ).join(
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
+        ).filter(
+            TeachingLoad.status.in_(['pending', 'submitted'])
+        )
+
+        # Filter by user role
+        if is_dean:
+            query = query.filter(
+                (TeachingLoad.department_id == user.department_id) |
+                (TeachingLoad.submitted_by == user.id)
+            )
+        elif is_program_head:
+            # Get the program IDs this program-head is assigned to
+            program_ids = [int(id) for id in user.programs.split(',')] if user.programs else []
+            query = query.filter(
+                (TeachingLoad.program_id.in_(program_ids)) |
+                (TeachingLoad.submitted_by == user.id)
+            )
+
+        batches = query.order_by(
+            TeachingLoad.submission_date.desc()
+        ).all()
+
+        result = []
+        for load, user, program, department in batches:
+            batch_info = {
+                'id': load.id,
+                'year_semester': f"{load.year_semester.school_year} - {load.year_semester.semester}",
+                'submitted_by': f"{user.first_name} {user.last_name}",
+                'user_role': user.user_type,
+                'submission_date': load.submission_date.strftime('%Y-%m-%d %H:%M'),
+                'status': load.status,
+                'is_submitted': load.status == 'submitted'
+            }
+
+            # Add program or department info based on what's available
+            if program:
+                batch_info.update({
+                    'program_name': program.program_name,
+                    'program_code': program.program_code,
+                    'department': program.department.department if program.department else None
+                })
+            elif department:
+                batch_info.update({
+                    'department': department.department,
+                    'department_code': department.department_code,
+                    'program_name': None,
+                    'program_code': None
+                })
+
+            result.append(batch_info)
+
+        return jsonify({'success': True, 'batches': result})
+    except Exception as e:
+        app.logger.error(f"Error fetching saved batches: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 400
 
 
 @app.route('/get_batch_subjects/<int:batch_id>')
@@ -851,37 +1079,58 @@ def deny_batch(batch_id):
 @app.route('/get_submitted_batches')
 def get_submitted_batches():
     try:
+        # Query with outer joins for both program and department
         batches = db.session.query(
             TeachingLoad,
             User,
             Program,
-            Department
+            Department,
+            YearSemester
         ).join(
             User, TeachingLoad.submitted_by == User.id
-        ).join(
+        ).outerjoin(
             Program, TeachingLoad.program_id == Program.id
+        ).outerjoin(
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
-            Department, Program.department_id == Department.id
+            YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).filter(
-            TeachingLoad.status == 'submitted'  # ✅ Only get pending submissions
+            TeachingLoad.status == 'submitted'
         ).order_by(
             TeachingLoad.submission_date.desc()
         ).all()
 
         result = []
-        for load, user, program, department in batches:
-            result.append({
+        for load, user, program, department, year_semester in batches:
+            batch_data = {
                 'id': load.id,
-                'program_name': program.program_name,
-                'program_code': program.program_code,
-                'department': department.department,
-                'year_semester': f"{load.year_semester.school_year} - {load.year_semester.semester}",
+                'year_semester': f"{year_semester.school_year} - {year_semester.semester}",
                 'submitted_by': f"{user.first_name} {user.last_name}",
                 'user_role': user.user_type,
                 'submission_date': load.submission_date.strftime('%Y-%m-%d %H:%M'),
                 'status': load.status,
                 'is_submitted': load.status == 'submitted'
-            })
+            }
+
+            # Add program info if available
+            if program:
+                batch_data.update({
+                    'program_name': program.program_name,
+                    'program_code': program.program_code,
+                    'department': department.department if department else None
+                })
+            # Fall back to department info if no program
+            elif department:
+                batch_data.update({
+                    'department': department.department,
+                    'department_code': department.department_code,
+                    'program_name': None,
+                    'program_code': None
+                })
+
+            result.append(batch_data)
 
         return jsonify({'success': True, 'batches': result})
 
@@ -889,10 +1138,10 @@ def get_submitted_batches():
         app.logger.error(f"Error fetching submitted batches: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 400
 
-
 @app.route('/get_approval_status')
 def get_approval_status():
     try:
+        # Use outer joins for both program and department
         loads = db.session.query(
             TeachingLoad.id,
             User.first_name,
@@ -905,10 +1154,12 @@ def get_approval_status():
             YearSemester.semester
         ).join(
             User, TeachingLoad.submitted_by == User.id
-        ).join(
+        ).outerjoin(
             Program, TeachingLoad.program_id == Program.id
-        ).join(
-            Department, Program.department_id == Department.id
+        ).outerjoin(
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
             YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).filter(
@@ -924,8 +1175,8 @@ def get_approval_status():
                 'submitted_by': f"{load.first_name} {load.last_name}",
                 'status': load.status,
                 'comment': load.comment,
-                'program_name': load.program_name,
-                'department': load.department,
+                'program_name': load.program_name or "NONE",  # Ensure "NONE" if null
+                'department': load.department or "NONE",      # Ensure "NONE" if null
                 'year_semester': f"{load.semester} Sem {load.school_year}"
             })
 
@@ -939,19 +1190,21 @@ def get_pending_approvals():
     try:
         pending_loads = db.session.query(
             TeachingLoad.id,
-            Department.department,
-            Program.program_name,
             User.first_name,
             User.last_name,
+            Program.program_name,
+            Department.department,
             YearSemester.school_year,
             YearSemester.semester,
             db.func.count(TeachingLoadSubject.id).label('subject_count')
         ).join(
             User, TeachingLoad.submitted_by == User.id
-        ).join(
+        ).outerjoin(
             Program, TeachingLoad.program_id == Program.id
-        ).join(
-            Department, Program.department_id == Department.id
+        ).outerjoin(
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
             YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).join(
@@ -961,10 +1214,10 @@ def get_pending_approvals():
             TeachingLoad.finance_status == 'pending'
         ).group_by(
             TeachingLoad.id,
-            Department.department,
-            Program.program_name,
             User.first_name,
             User.last_name,
+            Program.program_name,
+            Department.department,
             YearSemester.school_year,
             YearSemester.semester
         ).order_by(
@@ -973,9 +1226,9 @@ def get_pending_approvals():
 
         result = [{
             'id': load.id,
-            'department': load.department,
-            'program_name': load.program_name,
             'submitted_by': f"{load.first_name} {load.last_name}",
+            'program_name': load.program_name or "NONE",  # Ensure "NONE" if null
+            'department': load.department or "NONE",      # Ensure "NONE" if null
             'subject_count': load.subject_count,
             'year_semester': f"{load.semester} Sem {load.school_year}"
         } for load in pending_loads]
@@ -1005,10 +1258,12 @@ def get_denied_batches():
             YearSemester.semester
         ).join(
             User, TeachingLoad.submitted_by == User.id
-        ).join(
+        ).outerjoin(  # Changed to outerjoin for Program
             Program, TeachingLoad.program_id == Program.id
-        ).join(
-            Department, Program.department_id == Department.id
+        ).outerjoin(  # Changed to outerjoin for Department
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
             YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).filter(
@@ -1021,10 +1276,10 @@ def get_denied_batches():
         for batch in denied_batches:
             result.append({
                 'id': batch.id,
-                'submitted_by': f"{batch.first_name} {batch.last_name}",
-                'department': batch.department,
-                'program_name': batch.program_name,
-                'year_semester': f"{batch.semester} Sem {batch.school_year}",
+                'submitted_by': f"{batch.first_name or ''} {batch.last_name or ''}".strip(),
+                'department': batch.department or "NONE",
+                'program_name': batch.program_name or "NONE",
+                'year_semester': f"{batch.semester or ''} Sem {batch.school_year or ''}",
                 'reason': batch.comment or "No reason provided"
             })
 
@@ -1047,10 +1302,10 @@ def get_assigned_payments():
     try:
         assigned_payments = db.session.query(
             TeachingLoad.id,
-            Department.department,
-            Program.program_name,
             User.first_name,
             User.last_name,
+            Program.program_name,
+            Department.department,
             YearSemester.school_year,
             YearSemester.semester,
             db.func.count(TeachingLoadSubject.id).label('subject_count'),
@@ -1059,10 +1314,12 @@ def get_assigned_payments():
             PaymentAssignment.total_amount
         ).join(
             User, TeachingLoad.submitted_by == User.id
-        ).join(
+        ).outerjoin(  # Changed to outerjoin for Program
             Program, TeachingLoad.program_id == Program.id
-        ).join(
-            Department, Program.department_id == Department.id
+        ).outerjoin(  # Changed to outerjoin for Department
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
             YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).join(
@@ -1072,13 +1329,13 @@ def get_assigned_payments():
         ).join(
             PaymentScheme, PaymentAssignment.payment_scheme_id == PaymentScheme.id
         ).filter(
-            TeachingLoad.finance_status == 'approved'  # Changed from 'processed' to 'approved'
+            TeachingLoad.finance_status == 'approved'
         ).group_by(
             TeachingLoad.id,
-            Department.department,
-            Program.program_name,
             User.first_name,
             User.last_name,
+            Program.program_name,
+            Department.department,
             YearSemester.school_year,
             YearSemester.semester,
             PaymentScheme.payment_name,
@@ -1090,9 +1347,9 @@ def get_assigned_payments():
 
         result = [{
             'id': payment.id,
-            'department': payment.department,
-            'program_name': payment.program_name,
             'submitted_by': f"{payment.first_name} {payment.last_name}",
+            'program_name': payment.program_name or "NONE",  # Added null handling
+            'department': payment.department or "NONE",      # Added null handling
             'subject_count': payment.subject_count,
             'year_semester': f"{payment.semester} Sem {payment.school_year}",
             'scheme_name': payment.payment_name,
@@ -1193,7 +1450,7 @@ def assign_payment():
 @app.route('/get_assigned_payment_details/<int:batch_id>', methods=['GET'])
 def get_assigned_payment_details(batch_id):
     try:
-        # Get the payment assignment details
+        # Get the payment assignment details with outer joins
         payment_assignment = db.session.query(
             PaymentAssignment,
             PaymentScheme,
@@ -1208,10 +1465,12 @@ def get_assigned_payment_details(batch_id):
             User, PaymentAssignment.assigned_by == User.id
         ).join(
             TeachingLoad, PaymentAssignment.teaching_load_id == TeachingLoad.id
-        ).join(
+        ).outerjoin(  # Changed to outerjoin for Program
             Program, TeachingLoad.program_id == Program.id
-        ).join(
-            Department, Program.department_id == Department.id
+        ).outerjoin(  # Changed to outerjoin for Department
+            Department,
+            (TeachingLoad.department_id == Department.id) |
+            (Program.department_id == Department.id)
         ).join(
             YearSemester, TeachingLoad.year_semester_id == YearSemester.id
         ).filter(
@@ -1234,38 +1493,38 @@ def get_assigned_payment_details(batch_id):
             TeachingLoadSubject.teaching_load_id == batch_id
         ).all()
 
-        # Prepare subjects data
+        # Prepare subjects data with null handling
         subjects_data = []
         for load_subject, subject in subjects:
             subjects_data.append({
-                'subject_code': subject.subject_code,
-                'subject_name': subject.subject_name,
-                'total_units': load_subject.total_units,
-                'lecture': load_subject.lecture_hours,
-                'com_lab': load_subject.com_lab_hours,
-                'laboratory': load_subject.laboratory_hours,
-                'school_lecture': load_subject.school_lecture_hours,
-                'clinic': load_subject.clinic_hours,
+                'subject_code': subject.subject_code or "NONE",
+                'subject_name': subject.subject_name or "NONE",
+                'total_units': load_subject.total_units or 0,
+                'lecture': load_subject.lecture_hours or 0,
+                'com_lab': load_subject.com_lab_hours or 0,
+                'laboratory': load_subject.laboratory_hours or 0,
+                'school_lecture': load_subject.school_lecture_hours or 0,
+                'clinic': load_subject.clinic_hours or 0,
                 'subject_type': subject.subject_type.name if subject.subject_type else 'N/A',
-                'is_nstp': subject.is_nstp
+                'is_nstp': subject.is_nstp if subject.is_nstp is not None else False
             })
 
-        # Calculate totals from subjects
-        total_com_lab_units = sum(subj['com_lab'] for subj in subjects_data)
-        total_lab_units = sum(subj['laboratory'] for subj in subjects_data)
-        total_cl_units = sum(subj['school_lecture'] for subj in subjects_data)
-        total_c_units = sum(subj['clinic'] for subj in subjects_data)
+        # Calculate totals from subjects with null safety
+        total_com_lab_units = sum(subj.get('com_lab', 0) for subj in subjects_data)
+        total_lab_units = sum(subj.get('laboratory', 0) for subj in subjects_data)
+        total_cl_units = sum(subj.get('school_lecture', 0) for subj in subjects_data)
+        total_c_units = sum(subj.get('clinic', 0) for subj in subjects_data)
 
-        # Calculate tuition and NSTP units
+        # Calculate tuition and NSTP units with null safety
         tuition_units = 0
         nstp_units = 0
         for subj in subjects_data:
-            if subj['is_nstp']:
-                nstp_units += subj['total_units']
+            if subj.get('is_nstp', False):
+                nstp_units += subj.get('total_units', 0)
             else:
-                tuition_units += subj['total_units']
+                tuition_units += subj.get('total_units', 0)
 
-        # Calculate fees based on scheme
+        # Calculate fees with null safety
         total_com_lab_fee = total_com_lab_units * (scheme.com_lab_fee or 0)
         total_lab_fee = total_lab_units * (scheme.laboratory_fee or 0)
         total_cl_fee = total_cl_units * (scheme.school_lecture_fee or 0)
@@ -1289,11 +1548,11 @@ def get_assigned_payment_details(batch_id):
             total_nstp_fee
         )
 
-        # Calculate payment plan breakdown
+        # Calculate payment plan breakdown with null safety
         breakdown = {
-            'plan': assignment.payment_plan,
+            'plan': assignment.payment_plan or "NONE",
             'subtotal': subtotal,
-            'total': assignment.total_amount
+            'total': assignment.total_amount or 0
         }
 
         if assignment.payment_plan == 'cash':
@@ -1308,9 +1567,9 @@ def get_assigned_payment_details(batch_id):
             downpayment = regular_total + misc_total
             breakdown['downpayment'] = downpayment
             breakdown['remaining'] = subtotal - downpayment
-            breakdown['monthly_payment'] = breakdown['remaining'] / 4
+            breakdown['monthly_payment'] = breakdown['remaining'] / 4 if breakdown['remaining'] > 0 else 0
 
-        # Prepare the response
+        # Prepare the response with consistent null handling
         response = {
             'success': True,
             'payment_details': {
@@ -1318,24 +1577,30 @@ def get_assigned_payment_details(batch_id):
                 'batch_id': assignment.teaching_load_id,
                 'payment_scheme': {
                     'id': scheme.id,
-                    'payment_name': scheme.payment_name,
+                    'payment_name': scheme.payment_name or "NONE",
                     'regular_fees': regular_total,
                     'misc_fees': misc_total,
-                    'com_lab_fee': scheme.com_lab_fee,
-                    'laboratory_fee': scheme.laboratory_fee,
-                    'school_lecture_fee': scheme.school_lecture_fee,
-                    'clinic_fee': scheme.clinic_fee,
+                    'com_lab_fee': scheme.com_lab_fee or 0,
+                    'laboratory_fee': scheme.laboratory_fee or 0,
+                    'school_lecture_fee': scheme.school_lecture_fee or 0,
+                    'clinic_fee': scheme.clinic_fee or 0,
                     'aff_fee': aff_total,
-                    'tuition_fee': scheme.tuition_fee,
-                    'unit_fee': scheme.unit_fee
+                    'tuition_fee': scheme.tuition_fee or 0,
+                    'unit_fee': scheme.unit_fee or 0
                 },
-                'payment_plan': assignment.payment_plan,
-                'assigned_at': assignment.assigned_at.isoformat(),
-                'assigned_by': f"{user.first_name} {user.last_name}",
-                'department': department.department,
-                'program_name': program.program_name,
-                'submitted_by': teaching_load.submitted_by_user.first_name + " " + teaching_load.submitted_by_user.last_name,
-                'year_semester': f"{year_semester.semester} Sem {year_semester.school_year}",
+                'payment_plan': assignment.payment_plan or "NONE",
+                'assigned_at': assignment.assigned_at.isoformat() if assignment.assigned_at else None,
+                'assigned_by': f"{user.first_name or ''} {user.last_name or ''}".strip() or "NONE",
+                'department': department.department if department else "NONE",
+                'program_name': program.program_name if program else "NONE",
+                'submitted_by': (
+                    f"{teaching_load.submitted_by_user.first_name or ''} "
+                    f"{teaching_load.submitted_by_user.last_name or ''}"
+                ).strip() or "NONE",
+                'year_semester': (
+                    f"{year_semester.semester or ''} Sem "
+                    f"{year_semester.school_year or ''}"
+                ).strip(),
                 'subject_count': len(subjects_data),
                 'subjects': subjects_data,
                 'breakdown': breakdown,
@@ -1350,7 +1615,7 @@ def get_assigned_payment_details(batch_id):
                     'tuition_fee': total_tuition_fee,
                     'nstp_fee': total_nstp_fee,
                     'subtotal': subtotal,
-                    'total': assignment.total_amount
+                    'total': assignment.total_amount or 0
                 },
                 'units': {
                     'com_lab': total_com_lab_units,
@@ -1483,9 +1748,47 @@ def delete_payment_scheme(scheme_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+def create_default_admin():
+    # Check if admin already exists
+    admin = User.query.filter_by(email='admin.admin@gmail.com').first()
+    if not admin:
+        # Create new admin user
+        admin_user = User(
+            first_name='Admin',
+            last_name='User',
+            email='admin.admin@gmail.com',
+            user_type='admin',
+            department_id=None,
+            programs=None
+        )
+        admin_user.set_password('admin112233')  # Set the password
+        db.session.add(admin_user)
+        db.session.commit()
+        print("Default admin user created successfully")
+
+@app.route('/users/<int:id>', methods=['DELETE'])
+def delete_user(id):
+    user = User.query.get_or_404(id)
+
+    # Prevent deletion of default admin
+    if user.email == 'admin.admin@gmail.com':
+        return jsonify({
+            'success': False,
+            'message': 'Cannot delete default admin account'
+        }), 403
+
+    try:
+        log_important_action("User deleted", f"ID: {id} - {user.email}")
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'User deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 with app.app_context():
     db.create_all()
+    create_default_admin()  # Add this line to create default admin
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))

@@ -33,7 +33,7 @@
 <body class="bg-gray-50 min-h-screen flex flex-col">
   <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-      <h1 class="text-xl font-bold text-white" id="pageTitle">Head Program Dashboard</h1>
+      <h1 class="text-xl font-bold text-white" id="pageTitle">Dean's Dashboard</h1>
       <div class="flex items-center gap-4">
         <!-- User Info Dropdown -->
         <div class="relative group">
@@ -101,10 +101,19 @@
                       <option value="">Select Year/Semester</option>
                   </select>
 
-                  <select id="programSelect"
-                      class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
+                  <div id="departmentSelectContainer" class="hidden">
+                    <label for="departmentSelect">Department</label>
+                    <select id="departmentSelect" class="w-full p-2 border rounded">
+                      <option value="">Select Department</option>
+                    </select>
+                  </div>
+
+                  <div id="programSelectContainer" class="hidden">
+                    <label for="programSelect">Program</label>
+                    <select id="programSelect" class="w-full p-2 border rounded">
                       <option value="">Select Program</option>
-                  </select>
+                    </select>
+                  </div>
 
                   <select id="yearLevelSelect"
                       class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
@@ -355,8 +364,6 @@
   </main>
 <script>
 
-
-// Update the save button handler to allow multiple saves
 document.getElementById('saveButton').addEventListener('click', async function() {
   if (selectedSubjects.length === 0) {
     alert('Please select at least one subject before saving');
@@ -364,33 +371,62 @@ document.getElementById('saveButton').addEventListener('click', async function()
   }
 
   const yearSemesterId = document.getElementById('yearSemesterSelect').value;
-  const programId = document.getElementById('programSelect').value;
-
-  if (!yearSemesterId || !programId) {
-    alert('Please select both year/semester and program before saving');
+  if (!yearSemesterId) {
+    alert('Please select year/semester before saving');
     return;
   }
 
-  // Prepare complete subject data for saving
-  const data = {
-    year_semester_id: yearSemesterId,
-    program_id: programId,
-    subjects: selectedSubjects.map(subject => ({
-      id: subject.id,
-      subject_code: subject.code,
-      subject_name: subject.name,
-      lecture_hours: subject.lecture,
-      com_lab_hours: subject.com_lab,
-      laboratory_hours: subject.laboratory,
-      school_lecture_hours: subject.school_lecture,
-      clinic_hours: subject.clinic,
-      total_units: subject.total_units,
-      subject_type: subject.subject_type,
-      is_nstp: subject.is_nstp
-    }))
-  };
-
   try {
+    // Get current user
+    const userRes = await fetch('/current_user');
+    const userData = await userRes.json();
+
+    if (!userData.success || !userData.user) {
+      throw new Error('Failed to verify user role');
+    }
+
+    const isDean = userData.user.user_type.toLowerCase() === 'dean';
+    const isProgramHead = userData.user.user_type.toLowerCase() === 'program-head';
+
+    // Prepare data
+    const data = {
+      year_semester_id: yearSemesterId,
+      subjects: selectedSubjects.map(subject => ({
+        id: subject.id,
+        subject_code: subject.code,
+        subject_name: subject.name,
+        lecture_hours: subject.lecture,
+        com_lab_hours: subject.com_lab,
+        laboratory_hours: subject.laboratory,
+        school_lecture_hours: subject.school_lecture,
+        clinic_hours: subject.clinic,
+        total_units: subject.total_units,
+        subject_type: subject.subject_type,
+        is_nstp: subject.is_nstp
+      }))
+    };
+
+    // Add department_id or program_id based on role
+    if (isDean) {
+      const departmentId = document.getElementById('departmentSelect').value;
+      if (!departmentId) {
+        alert('Please select department before saving');
+        return;
+      }
+      data.department_id = departmentId;
+    } else if (isProgramHead) {
+      const programId = document.getElementById('programSelect').value;
+      if (!programId) {
+        alert('Please select program before saving');
+        return;
+      }
+      data.program_id = programId;
+    } else {
+      alert('Unauthorized user role');
+      return;
+    }
+
+    // Send request
     const response = await fetch('/save_teaching_load', {
       method: 'POST',
       headers: {
@@ -401,26 +437,30 @@ document.getElementById('saveButton').addEventListener('click', async function()
 
     const result = await response.json();
 
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to save');
+    }
+
     if (result.success) {
       showNotification('Subjects saved successfully!');
-      // Don't clear selectedSubjects to allow multiple saves
       updateSelectedSubjectsTable();
-      loadSavedBatches(); // Refresh the saved batches list
+      loadSavedBatches();
     } else {
       alert('Failed to save: ' + (result.message || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error:', error);
-    alert('Failed to save subjects');
+    alert('Failed to save subjects: ' + error.message);
   }
 });
 
 async function loadSavedBatches() {
+    const container = document.getElementById('savedBatchesContainer');
+
     try {
-        const response = await fetch('/get_saved_batches_program');
+        const response = await fetch('/get_saved_batches');
         const data = await response.json();
 
-        const container = document.getElementById('savedBatchesContainer');
         container.innerHTML = '';
 
         if (data.success && data.batches.length > 0) {
@@ -436,12 +476,16 @@ async function loadSavedBatches() {
                         break;
                 }
 
+                // Determine what to display as the primary identifier
+                let primaryName = batch.program_name || batch.department || 'Unnamed Batch';
+                let secondaryInfo = batch.program_code || batch.department_code || '';
+
                 const batchCard = document.createElement('div');
                 batchCard.className = 'flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow';
                 batchCard.onclick = () => openBatchModal(
                     batch.id,
-                    batch.program_name,
-                    batch.program_code,
+                    primaryName,
+                    secondaryInfo,
                     batch.year_semester,
                     batch.status === 'submitted'
                 );
@@ -450,13 +494,14 @@ async function loadSavedBatches() {
                     <div class="p-4">
                         <div class="flex justify-between items-start">
                             <div>
-                                <h3 class="font-medium text-gray-900">${batch.program_name}</h3>
-                                <p class="text-sm text-gray-500">${batch.year_semester}</p>
+                                <h3 class="font-medium text-gray-900">${primaryName}</h3>
+                                ${secondaryInfo ? `<p class="text-sm text-gray-500">${secondaryInfo}</p>` : ''}
+                                <p class="text-sm text-gray-500 mt-1">${batch.year_semester}</p>
                             </div>
                             ${statusBadge}
                         </div>
                         <div class="mt-4">
-                            <p class="text-xs text-gray-500">${batch.submitted_by}</p>
+                            <p class="text-xs text-gray-500">Submitted by: ${batch.submitted_by}</p>
                             <p class="text-xs text-gray-500">${batch.user_role} • ${new Date(batch.submission_date).toLocaleDateString()}</p>
                         </div>
                     </div>
@@ -965,6 +1010,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 </script>
-<script src="{{ url_for('static', filename='program.js') }}"></script>
+<script src="{{ url_for('static', filename='dean.js') }}"></script>
 </body>
 </html>

@@ -206,36 +206,36 @@
     });
 
     function fetchSubmittedBatches() {
-      fetch('/get_submitted_batches')
-        .then(res => res.json())
-        .then(data => {
-          const table = document.getElementById('subjectOfferingsTable');
-          table.innerHTML = '';
+        fetch('/get_submitted_batches')
+            .then(res => res.json())
+            .then(data => {
+                const table = document.getElementById('subjectOfferingsTable');
+                table.innerHTML = '';
 
-          if (data.success && data.batches.length > 0) {
-            data.batches.forEach(batch => {
-              const row = document.createElement('tr');
-              row.innerHTML = `
-                <td class="p-3">${batch.department}</td>
-                <td class="p-3">${batch.program_name}</td>
-                <td class="p-3">
-                  ${batch.submitted_by}
-                </td>
-                <td class="p-3">${batch.year_semester}</td>
-                <td class="p-3 text-right">
-                  <button onclick="openBatchModal(${batch.id}, '${batch.submitted_by}')" class="text-action hover:underline text-sm">View</button>
-                </td>
-              `;
-              table.appendChild(row);
+                if (data.success && data.batches.length > 0) {
+                    data.batches.forEach(batch => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="p-3">${batch.department || 'NONE'}</td>
+                            <td class="p-3">${batch.program_name || 'NONE'}</td>
+                            <td class="p-3">
+                                ${batch.submitted_by}
+                            </td>
+                            <td class="p-3">${batch.year_semester}</td>
+                            <td class="p-3 text-right">
+                                <button onclick="openBatchModal(${batch.id}, '${batch.submitted_by}')" class="text-action hover:underline text-sm">View</button>
+                            </td>
+                        `;
+                        table.appendChild(row);
+                    });
+                } else {
+                    table.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-gray-500">No subject offerings to review.</td>
+                        </tr>
+                    `;
+                }
             });
-          } else {
-            table.innerHTML = `
-              <tr>
-                <td colspan="5" class="py-8 text-center text-gray-500">No subject offerings to review.</td>
-              </tr>
-            `;
-          }
-        });
     }
 
     function openBatchModal(batchId, professorName) {
@@ -330,78 +330,90 @@
     }
 
     function fetchApprovalStatus() {
-      fetch('/get_approval_status')
-        .then(res => res.json())
-        .then(data => {
-          const approvedTbody = document.getElementById('approvedStatusTable');
-          const deniedTbody = document.getElementById('deniedStatusTable');
+        fetch('/get_approval_status')
+            .then(res => res.json())
+            .then(data => {
+                const approvedTbody = document.getElementById('approvedStatusTable');
+                const deniedTbody = document.getElementById('deniedStatusTable');
 
-          approvedTbody.innerHTML = '';
-          deniedTbody.innerHTML = '';
+                approvedTbody.innerHTML = '';
+                deniedTbody.innerHTML = '';
 
-          if (data.success && data.statuses.length > 0) {
-            // Filter approved and denied batches
-            const approvedBatches = data.statuses.filter(batch => batch.status === 'approved');
-            const deniedBatches = data.statuses.filter(batch => batch.status === 'denied');
+                if (data.success && data.statuses.length > 0) {
+                    // Filter approved and denied batches
+                    const approvedBatches = data.statuses.filter(batch => batch.status === 'approved');
+                    const deniedBatches = data.statuses.filter(batch => batch.status === 'denied');
 
-            // Populate approved table
-            if (approvedBatches.length > 0) {
-              approvedBatches.forEach(batch => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td class="p-3">${batch.department}</td>
-                  <td class="p-3">${batch.program_name}</td>
-                  <td class="p-3">${batch.submitted_by}</td>
-                  <td class="p-3">${batch.year_semester}</td>
-                  <td class="p-3 text-green-800">${batch.status}</td>
-                `;
-                approvedTbody.appendChild(row);
-              });
-            } else {
-              approvedTbody.innerHTML = `
-                <tr>
-                  <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
-                </tr>
-              `;
-            }
+                    // Populate approved table
+                    if (approvedBatches.length > 0) {
+                        approvedBatches.forEach(batch => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="p-3">${batch.department}</td>
+                                <td class="p-3">${batch.program_name}</td>
+                                <td class="p-3">${batch.submitted_by}</td>
+                                <td class="p-3">${batch.year_semester}</td>
+                                <td class="p-3 text-green-800">${batch.status}</td>
+                            `;
+                            approvedTbody.appendChild(row);
+                        });
+                    } else {
+                        approvedTbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
+                            </tr>
+                        `;
+                    }
 
-            // Populate denied table
-            if (deniedBatches.length > 0) {
-              deniedBatches.forEach(batch => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td class="p-3">${batch.department}</td>
-                  <td class="p-3">${batch.program_name}</td>
-                  <td class="p-3">${batch.submitted_by}</td>
-                  <td class="p-3">${batch.year_semester}</td>
-                  <td class="p-3">
-                    <span onclick="showDenialReason('${batch.comment || ''}')" class="text-red-600 hover:underline cursor-pointer text-sm">
-                      View Reason
-                    </span>
-                  </td>
-                `;
-                deniedTbody.appendChild(row);
-              });
-            } else {
-              deniedTbody.innerHTML = `
-                <tr>
-                  <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
-                </tr>
-              `;
-            }
-          } else {
-            approvedTbody.innerHTML = `
-              <tr>
-                <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
-              </tr>
-            `;
-            deniedTbody.innerHTML = `
-              <tr>
-                <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
-              </tr>
-            `;
-          }
-        });
+                    // Populate denied table
+                    if (deniedBatches.length > 0) {
+                        deniedBatches.forEach(batch => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="p-3">${batch.department}</td>
+                                <td class="p-3">${batch.program_name}</td>
+                                <td class="p-3">${batch.submitted_by}</td>
+                                <td class="p-3">${batch.year_semester}</td>
+                                <td class="p-3">
+                                    <span onclick="showDenialReason('${escapeHtml(batch.comment) || 'No reason provided'}')"
+                                        class="text-red-600 hover:underline cursor-pointer text-sm">
+                                        View Reason
+                                    </span>
+                                </td>
+                            `;
+                            deniedTbody.appendChild(row);
+                        });
+                    } else {
+                        deniedTbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    approvedTbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-gray-500">No approved subject offerings yet.</td>
+                        </tr>
+                    `;
+                    deniedTbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-gray-500">No denied subject offerings yet.</td>
+                        </tr>
+                    `;
+                }
+            });
+    }
+
+    // Helper function to escape HTML for safe display
+    function escapeHtml(unsafe) {
+        if (!unsafe) return unsafe;
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     function showDenialReason(comment) {

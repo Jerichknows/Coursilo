@@ -1,3 +1,7 @@
+// Initialize selectedSubjects array
+let selectedSubjects = [];
+
+// Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', function () {
   fetch('/logout')
     .then(response => {
@@ -13,91 +17,93 @@ document.getElementById('logoutBtn').addEventListener('click', function () {
     });
 });
 
+// DOM Content Loaded
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize Lucide icons
   lucide.createIcons();
 
-  // Fetch user data
-  fetch('/current_user')
-    .then(response => response.json())
-    .then(data => {
-      if (data.success && data.user) {
-        const user = data.user;
+  // Load user data and setup UI based on role
+  loadUserDataAndSetup();
+});
 
-        // Set basic user info that everyone sees
-        document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('userEmailDropdown').textContent = user.email;
-        document.getElementById('userName').textContent = `${user.first_name} ${user.last_name}`;
+async function loadUserDataAndSetup() {
+  try {
+    const userRes = await fetch('/current_user');
+    const userData = await userRes.json();
 
-        // Set user role
-        document.getElementById('userRole').textContent = user.user_type.toLowerCase();
+    if (userData.success && userData.user) {
+      setupUserProfile(userData.user);
+      await loadYearSemesters();
 
-        // Get references to all info sections
-        const departmentInfo = document.getElementById('departmentInfo');
-        const departmentName = document.getElementById('departmentName');
-        const programsInfo = document.getElementById('programsInfo');
-        const programsList = document.getElementById('programsList');
-
-        // Clear existing programs
-        programsList.innerHTML = '';
-
-        // Role-based display logic
-        switch(user.user_type.toLowerCase()) {
-          case 'admin':
-            // Admin only shows email (default state)
-            departmentInfo.classList.add('hidden');
-            programsInfo.classList.add('hidden');
-            break;
-
-          case 'dean':
-            // Dean shows email and department
-            if (user.department) {
-              departmentName.textContent = `${user.department.name} (${user.department.code})`;
-              departmentInfo.classList.remove('hidden');
-            }
-            programsInfo.classList.add('hidden');
-            break;
-
-          case 'program-head':
-            // Program head shows email, department, and programs
-            if (user.department) {
-              departmentName.textContent = `${user.department.name} (${user.department.code})`;
-              departmentInfo.classList.remove('hidden');
-            }
-
-            if (user.programs && user.programs.length > 0) {
-              user.programs.forEach(program => {
-                const li = document.createElement('li');
-                li.className = 'py-1 text-sm text-gray-700';
-                li.textContent = `${program.name} (${program.code})`;
-                programsList.appendChild(li);
-              });
-              programsInfo.classList.remove('hidden');
-            } else {
-              const li = document.createElement('li');
-              li.className = 'py-1 text-sm text-gray-500 italic';
-              li.textContent = 'No programs assigned';
-              programsList.appendChild(li);
-              programsInfo.classList.remove('hidden');
-            }
-            break;
-
-          default:
-            // Default case (shouldn't happen)
-            departmentInfo.classList.add('hidden');
-            programsInfo.classList.add('hidden');
-        }
+      // Setup UI based on user role
+      if (userData.user.user_type.toLowerCase() === 'dean') {
+        await loadDepartments();
+        document.getElementById('departmentSelectContainer').classList.remove('hidden');
+        document.getElementById('programSelectContainer').classList.add('hidden');
+      } else if (userData.user.user_type.toLowerCase() === 'program-head') {
+        await loadAssignedPrograms();
+        document.getElementById('departmentSelectContainer').classList.add('hidden');
+        document.getElementById('programSelectContainer').classList.remove('hidden');
       }
-    })
-    .catch(error => {
-      console.error('Error fetching user data:', error);
-    });
-});
+    }
+  } catch (error) {
+    console.error('Error loading user data:', error);
+  }
+}
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadYearSemesters();
-  await loadAssignedPrograms();
-});
+function setupUserProfile(user) {
+  // Set basic user info
+  document.getElementById('userEmail').textContent = user.email;
+  document.getElementById('userEmailDropdown').textContent = user.email;
+  document.getElementById('userName').textContent = `${user.first_name} ${user.last_name}`;
+  document.getElementById('userRole').textContent = user.user_type.toLowerCase();
+
+  // Set department and programs info
+  const departmentInfo = document.getElementById('departmentInfo');
+  const departmentName = document.getElementById('departmentName');
+  const programsInfo = document.getElementById('programsInfo');
+  const programsList = document.getElementById('programsList');
+
+  programsList.innerHTML = '';
+
+  switch(user.user_type.toLowerCase()) {
+    case 'admin':
+      departmentInfo.classList.add('hidden');
+      programsInfo.classList.add('hidden');
+      break;
+    case 'dean':
+      if (user.department) {
+        departmentName.textContent = `${user.department.name} (${user.department.code})`;
+        departmentInfo.classList.remove('hidden');
+      }
+      programsInfo.classList.add('hidden');
+      break;
+    case 'program-head':
+      if (user.department) {
+        departmentName.textContent = `${user.department.name} (${user.department.code})`;
+        departmentInfo.classList.remove('hidden');
+      }
+      if (user.programs && user.programs.length > 0) {
+        user.programs.forEach(program => {
+          const li = document.createElement('li');
+          li.className = 'py-1 text-sm text-gray-700';
+          li.textContent = `${program.name} (${program.code})`;
+          programsList.appendChild(li);
+        });
+        programsInfo.classList.remove('hidden');
+      } else {
+        const li = document.createElement('li');
+        li.className = 'py-1 text-sm text-gray-500 italic';
+        li.textContent = 'No programs assigned';
+        programsList.appendChild(li);
+        programsInfo.classList.remove('hidden');
+      }
+      break;
+    default:
+      departmentInfo.classList.add('hidden');
+      programsInfo.classList.add('hidden');
+  }
+}
 
 async function loadYearSemesters() {
   try {
@@ -105,9 +111,9 @@ async function loadYearSemesters() {
     const data = await res.json();
 
     const select = document.getElementById('yearSemesterSelect');
-    select.innerHTML = ''; // Clear all options first
+    select.innerHTML = '';
 
-    // Find the active YearSemester entry
+    // Find active and inactive entries
     const activeEntry = data.find(entry => entry.is_active);
     const inactiveEntries = data.filter(entry => !entry.is_active);
 
@@ -119,7 +125,7 @@ async function loadYearSemesters() {
     placeholderOption.selected = !activeEntry;
     select.appendChild(placeholderOption);
 
-    // Add active entry first (if exists)
+    // Add active entry first if exists
     if (activeEntry) {
       const option = document.createElement('option');
       option.value = activeEntry.id;
@@ -128,7 +134,7 @@ async function loadYearSemesters() {
       select.appendChild(option);
     }
 
-    // Create an optgroup for inactive options
+    // Add inactive entries in optgroup
     if (inactiveEntries.length > 0) {
       const optGroup = document.createElement('optgroup');
       optGroup.label = 'Inactive Year/Semesters';
@@ -144,9 +150,52 @@ async function loadYearSemesters() {
     }
   } catch (err) {
     console.error('Failed to load year/semesters:', err);
+    showNotification('Failed to load year/semester data');
   }
 }
 
+async function loadDepartments() {
+  try {
+    const res = await fetch('/departments_year');
+    const data = await res.json();
+
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load departments');
+    }
+
+    const select = document.getElementById('departmentSelect');
+    select.innerHTML = '<option value="">Select Department</option>';
+
+    // Get current user's department
+    const userRes = await fetch('/current_user');
+    const userData = await userRes.json();
+    const currentDepartmentId = userData.user?.department?.id;
+
+    data.departments.forEach(d => {
+      const option = document.createElement('option');
+      option.value = d.id;
+      option.textContent = `${d.department} (${d.department_code})`;
+
+      // Select current user's department by default
+      if (currentDepartmentId && d.id === currentDepartmentId) {
+        option.selected = true;
+      }
+
+      select.appendChild(option);
+    });
+
+    // If user has a department, trigger the change event to load year levels
+    if (currentDepartmentId) {
+      const yearSemesterId = document.getElementById('yearSemesterSelect').value;
+      if (yearSemesterId) {
+        await loadYearLevelsByDepartment(currentDepartmentId);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load departments:', err);
+    showNotification('Failed to load department data');
+  }
+}
 
 async function loadAssignedPrograms() {
   try {
@@ -168,28 +217,7 @@ async function loadAssignedPrograms() {
     });
   } catch (err) {
     console.error('Failed to load programs:', err);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadYearSemesters();
-  await loadAssignedPrograms();
-
-  // Load the user's department and year levels
-  await loadUserDepartmentAndYearLevels();
-});
-
-async function loadUserDepartmentAndYearLevels() {
-  try {
-    const res = await fetch('/current_user');
-    const data = await res.json();
-
-    if (data.success && data.user && data.user.department) {
-      const departmentId = data.user.department.id;
-      await loadYearLevelsByDepartment(departmentId);
-    }
-  } catch (err) {
-    console.error('Failed to load user department:', err);
+    showNotification('Failed to load program data');
   }
 }
 
@@ -204,7 +232,6 @@ async function loadYearLevelsByDepartment(departmentId) {
     const data = await res.json();
 
     if (data.success && data.year_levels && data.year_levels.length > 0) {
-      // Get unique year levels and sort them
       const uniqueYearLevels = [...new Set(data.year_levels)].sort();
 
       uniqueYearLevels.forEach(year => {
@@ -221,24 +248,74 @@ async function loadYearLevelsByDepartment(departmentId) {
     }
   } catch (err) {
     console.error('Failed to load year levels:', err);
+    showNotification('Failed to load year levels');
   }
 }
 
-// Add event listener for year level selection to load subjects
-document.getElementById('yearLevelSelect').addEventListener('change', async function() {
-  const yearLevel = this.value;
-  const programId = document.getElementById('programSelect').value;
+// Event listeners for dropdown changes
+document.getElementById('departmentSelect').addEventListener('change', async function() {
+  const departmentId = this.value;
   const yearSemesterId = document.getElementById('yearSemesterSelect').value;
 
-  if (yearLevel && programId && yearSemesterId) {
-    await loadSubjects(yearSemesterId, programId, yearLevel);
+  if (departmentId && yearSemesterId) {
+    await loadYearLevelsByDepartment(departmentId);
   }
 });
 
+document.getElementById('programSelect').addEventListener('change', async function() {
+  const programId = this.value;
+  const yearSemesterId = document.getElementById('yearSemesterSelect').value;
 
-async function loadSubjects(yearSemesterId, programId, yearLevel) {
+  if (programId && yearSemesterId) {
+    try {
+      const res = await fetch(`/get_program_details/${programId}`);
+      const data = await res.json();
+
+      if (data.success && data.program) {
+        await loadYearLevelsByDepartment(data.program.department_id);
+      }
+    } catch (err) {
+      console.error('Failed to load program details:', err);
+      showNotification('Failed to load program details');
+    }
+  }
+});
+
+document.getElementById('yearLevelSelect').addEventListener('change', async function() {
+  const yearLevel = this.value;
+  const yearSemesterId = document.getElementById('yearSemesterSelect').value;
+
+  const userRes = await fetch('/current_user');
+  const userData = await userRes.json();
+
+  if (userData.success && userData.user) {
+    if (userData.user.user_type.toLowerCase() === 'dean') {
+      const departmentId = document.getElementById('departmentSelect').value;
+      if (yearLevel && departmentId && yearSemesterId) {
+        await loadSubjects(yearSemesterId, departmentId, yearLevel);
+      }
+    } else {
+      const programId = document.getElementById('programSelect').value;
+      if (yearLevel && programId && yearSemesterId) {
+        await loadSubjects(yearSemesterId, programId, yearLevel);
+      }
+    }
+  }
+});
+
+async function loadSubjects(yearSemesterId, identifier, yearLevel) {
   try {
-    const res = await fetch(`/subjects_by_program_year?year_semester_id=${yearSemesterId}&program_id=${programId}&year_level=${yearLevel}`);
+    let url;
+    const userRes = await fetch('/current_user');
+    const userData = await userRes.json();
+
+    if (userData.success && userData.user.user_type.toLowerCase() === 'dean') {
+      url = `/subjects_by_department_year?year_semester_id=${yearSemesterId}&department_id=${identifier}&year_level=${yearLevel}`;
+    } else {
+      url = `/subjects_by_program_year?year_semester_id=${yearSemesterId}&program_id=${identifier}&year_level=${yearLevel}`;
+    }
+
+    const res = await fetch(url);
     const data = await res.json();
 
     const subjectSelect = document.getElementById('subjectSelect');
@@ -259,13 +336,53 @@ async function loadSubjects(yearSemesterId, programId, yearLevel) {
     }
   } catch (err) {
     console.error('Failed to load subjects:', err);
+    showNotification('Failed to load subjects');
   }
 }
 
-// Initialize selectedSubjects array at the top level
-let selectedSubjects = [];
+// Subject selection handler
+document.getElementById('subjectSelect').addEventListener('change', async function() {
+  const subjectId = this.value;
 
-// Function to show notification
+  if (subjectId) {
+    try {
+      const response = await fetch(`/get_subject_details/${subjectId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const subject = data.subject;
+
+        if (!selectedSubjects.some(sub => sub.id === subject.id)) {
+          selectedSubjects.push({
+            id: subject.id,
+            code: subject.subject_code,
+            name: subject.subject_name,
+            total_units: subject.total_units,
+            lecture: subject.lecture,
+            com_lab: subject.com_lab,
+            laboratory: subject.laboratory,
+            school_lecture: subject.school_lecture,
+            clinic: subject.clinic,
+            subject_type: subject.subject_type,
+            is_nstp: subject.is_nstp
+          });
+
+          updateSelectedSubjectsTable();
+          this.value = '';
+        } else {
+          showNotification('This subject has already been selected');
+        }
+      } else {
+        showNotification('Failed to load subject details: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching subject details:', error);
+      showNotification('Error loading subject details');
+    }
+  }
+});
+
+// Notification function
 function showNotification(message) {
   const notification = document.getElementById('notification');
   notification.textContent = message;
@@ -276,7 +393,7 @@ function showNotification(message) {
   }, 3000);
 }
 
-// Function to update the summary section
+// Update summary and table functions
 function updateSummary() {
   const totalSubjects = selectedSubjects.length;
   const totalUnits = selectedSubjects.reduce((sum, subject) => sum + (subject.total_units || 0), 0);
@@ -284,7 +401,6 @@ function updateSummary() {
   document.getElementById('totalSubjects').textContent = totalSubjects;
   document.getElementById('totalUnits').textContent = totalUnits;
 
-  // Update load status
   const loadStatus = document.getElementById('loadStatus');
   loadStatus.className = 'rounded-full px-3 py-1 text-sm font-medium ';
 
@@ -300,7 +416,6 @@ function updateSummary() {
   }
 }
 
-// Update the table row generation
 function updateSelectedSubjectsTable() {
   const tableBody = document.getElementById('selectedSubjectsTable');
   tableBody.innerHTML = '';
@@ -338,10 +453,8 @@ function updateSelectedSubjectsTable() {
       tableBody.appendChild(row);
     });
 
-    // Initialize Lucide icons for new elements
     lucide.createIcons();
 
-    // Add event listeners to remove buttons
     document.querySelectorAll('.remove-subject-btn').forEach(button => {
       button.addEventListener('click', function() {
         const index = parseInt(this.getAttribute('data-index'));
@@ -354,50 +467,3 @@ function updateSelectedSubjectsTable() {
 
   updateSummary();
 }
-
-// Subject selection handler
-document.getElementById('subjectSelect').addEventListener('change', async function() {
-  const subjectId = this.value;
-
-  if (subjectId) {
-    try {
-      // Fetch complete subject details
-      const response = await fetch(`/get_subject_details/${subjectId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        const subject = data.subject;
-
-        // Add to selected subjects array if not already present
-        if (!selectedSubjects.some(sub => sub.id === subject.id)) {
-          selectedSubjects.push({
-            id: subject.id,
-            code: subject.subject_code,
-            name: subject.subject_name,
-            total_units: subject.total_units,
-            lecture: subject.lecture,
-            com_lab: subject.com_lab,
-            laboratory: subject.laboratory,
-            school_lecture: subject.school_lecture,
-            clinic: subject.clinic,
-            subject_type: subject.subject_type,
-            is_nstp: subject.is_nstp
-          });
-
-          // Update the table
-          updateSelectedSubjectsTable();
-
-          // Reset the select
-          this.value = '';
-        } else {
-          alert('This subject has already been selected');
-        }
-      } else {
-        alert('Failed to load subject details: ' + data.message);
-      }
-    } catch (error) {
-      console.error('Error fetching subject details:', error);
-      alert('Error loading subject details');
-    }
-  }
-});
