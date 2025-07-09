@@ -7,6 +7,8 @@ import os
 from pytz import timezone
 from datetime import datetime, UTC
 from timezone_config import PH_TZ, get_current_ph_time
+from functools import wraps
+from flask import abort
 
 app = Flask(__name__)
 
@@ -21,6 +23,22 @@ db.init_app(app)
 saved_batches = {}
 
 PH_TZ = timezone('Asia/Manila')
+
+# Add this decorator function at the top of your file (after imports)
+def role_required(*required_roles):
+    """Decorator to check if user has the required role"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return redirect(url_for('index'))
+
+            user = db.session.get(User, session['user_id'])
+            if not user or user.user_type.lower() not in required_roles:
+                abort(403)  # Forbidden
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 def log_audit(action, status, message=None, metadata=None):
     """Log an audit event with proper timezone handling"""
@@ -417,48 +435,6 @@ def update_subject(subject_code):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 400
 
-@app.route('/login', methods=['GET', 'POST'])
-def show_login_page():
-    if request.method == 'POST':
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "message": "No data provided"}), 400
-
-        email = data.get('email')
-        password = data.get('password')
-
-        user = User.query.filter_by(email=email).first()
-
-        if user and user.check_password(password):  # Secure password check
-            session['user_id'] = user.id
-            session['role'] = user.user_type  # Assuming your model uses `user_type`
-
-            # Role-based redirection
-            if user.user_type in ['program-head']:
-                redirect_url = url_for('index')
-            elif user.user_type == 'admin':
-                redirect_url = url_for('admin')
-            elif user.user_type == 'dean':
-                redirect_url = url_for('dean')
-            elif user.user_type == 'registrar':
-                redirect_url = url_for('registrar')
-            elif user.user_type == 'finance':
-                redirect_url = url_for('finance')
-            else:
-                return jsonify({"success": False, "message": "Unknown role"}), 400
-
-            log_important_action("User login", status="success")
-            return jsonify({
-                "success": True,
-                "message": "Login successful",
-                "redirect": redirect_url
-            })
-
-        log_important_action("Failed login attempt", status="failed")
-        return jsonify({"success": False, "message": "Invalid credentials"}), 401
-
-    return render_template('login.html')
-
 @app.route('/current_user')
 def get_current_user():
     if 'user_id' not in session:
@@ -599,10 +575,12 @@ def register():
             "error": str(e)
         }), 500
 
+
 @app.route('/admin')
+@role_required('admin')
 def admin():
     if 'user_id' not in session:
-        return redirect(url_for('show_login_page'))
+        return redirect(url_for('index'))
     return render_template('admin.html')
 
 
@@ -611,19 +589,63 @@ def logout():
     if 'user_id' in session:
         log_important_action("User logout", status="success")
     session.clear()  # Clear all session data
-    return redirect(url_for('show_login_page'))
+    return redirect(url_for('index'))  # Changed from login to index
 
-
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "No data provided"}), 400
+
+        email = data.get('email')
+        password = data.get('password')
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['role'] = user.user_type.lower()
+
+            # Role-based redirection - updated to use program_head_dashboard
+            if user.user_type.lower() in ['program-head']:
+                redirect_url = url_for('program_head_dashboard')
+            elif user.user_type.lower() == 'admin':
+                redirect_url = url_for('admin')
+            elif user.user_type.lower() == 'dean':
+                redirect_url = url_for('dean')
+            elif user.user_type.lower() == 'registrar':
+                redirect_url = url_for('registrar')
+            elif user.user_type.lower() == 'finance':
+                redirect_url = url_for('finance')
+            else:
+                return jsonify({"success": False, "message": "Unknown role"}), 400
+
+            log_important_action("User login", status="success")
+            return jsonify({
+                "success": True,
+                "message": "Login successful",
+                "redirect": redirect_url
+            })
+
+        log_important_action("Failed login attempt", status="failed")
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+    # If GET request, show login page
+    return render_template('login.html')
+
+@app.route('/program')
+@role_required('program-head')
+def program_head_dashboard():
     if 'user_id' not in session:
-        return redirect(url_for('show_login_page'))
+        return redirect(url_for('index'))  # Changed from login to index
     return render_template('index.html')
 
 @app.route('/dean')
+@role_required('dean')
 def dean():
     if 'user_id' not in session:
-        return redirect(url_for('show_login_page'))
+        return redirect(url_for('index'))
     return render_template('dean.html')
 
 @app.route('/year-semester-sorted', methods=['GET'])
@@ -1072,7 +1094,7 @@ def update_subject_in_batch(batch_id, subject_id):
                 # Verify both IDs exist
         if not batch_id or not subject_id:
             return jsonify({'success': False, 'message': 'Missing batch or subject ID'}), 400
-            
+
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': 'User not authenticated'}), 401
 
@@ -1451,10 +1473,12 @@ def get_denied_batches():
 
 
 @app.route('/registrar', methods=['GET', 'POST'])
+@role_required('registrar')
 def registrar():
     return render_template('Registrar.html')
 
 @app.route('/finance', methods=['GET', 'POST'])
+@role_required('finance')
 def finance():
     return render_template('finance.html')
 
