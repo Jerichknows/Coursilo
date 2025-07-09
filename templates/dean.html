@@ -102,15 +102,15 @@
                   </select>
 
                   <div id="departmentSelectContainer" class="hidden">
-                    <label for="departmentSelect">Department</label>
-                    <select id="departmentSelect" class="w-full p-2 border rounded">
+                    <label for="departmentSelect"></label>
+                    <select id="departmentSelect" class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
                       <option value="">Select Department</option>
                     </select>
                   </div>
 
                   <div id="programSelectContainer" class="hidden">
                     <label for="programSelect">Program</label>
-                    <select id="programSelect" class="w-full p-2 border rounded">
+                    <select id="programSelect" class="w-full mt-4 rounded-md border border-gray-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-action/20">
                       <option value="">Select Program</option>
                     </select>
                   </div>
@@ -442,11 +442,20 @@ document.getElementById('saveButton').addEventListener('click', async function()
     }
 
     if (result.success) {
-      showNotification('Subjects saved successfully!');
-      updateSelectedSubjectsTable();
-      loadSavedBatches();
+        showNotification('Subjects saved successfully!');
+
+        // Clear selected subjects
+        selectedSubjects = [];
+
+        // Reset year level and subject selections
+        document.getElementById('yearLevelSelect').innerHTML = '<option value="">Select Year Level</option>';
+        document.getElementById('subjectSelect').innerHTML = '<option value="">Select Subject</option>';
+
+        // Update the table and summary
+        updateSelectedSubjectsTable();
+        loadSavedBatches();
     } else {
-      alert('Failed to save: ' + (result.message || 'Unknown error'));
+        alert('Failed to save: ' + (result.message || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error:', error);
@@ -1008,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener("DOMContentLoaded", () => {
       fetchAssignedPayments();
     });
+
 
 </script>
 <script src="{{ url_for('static', filename='dean.js') }}"></script>

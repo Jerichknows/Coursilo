@@ -56,6 +56,23 @@
     #programsCheckboxContainer div:hover {
       background-color: #f8fafc;
     }
+
+    .input-field {
+        border: 1px solid #d1d5db;
+        color: #111827;
+        font-size: 0.875rem;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        width: 100%;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      }
+
+      .input-field:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+      }
   </style>
 </head>
 
@@ -253,6 +270,8 @@
                         <option value="admin">Admin</option>
                         <option value="dean">Dean</option>
                         <option value="program-head">Program Head</option>
+                        <option value="registrar">Registrar</option>
+                        <option value="finance">Finance</option>
                       </select>
                     </div>
                     <div id="departmentField" class="hidden">
@@ -534,6 +553,69 @@
                   </div>
 
                   <button type="submit" class="mt-4 bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition">Add Subject</button>
+                </form>
+              </div>
+            </div>
+
+            <div id="editSubjectModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+              <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative">
+                <button id="closeEditSubjectModal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+
+                <div class="mb-4 flex items-center gap-3">
+                  <i data-lucide="pen" class="h-6 w-6 text-action"></i>
+                  <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Edit Subject</h2>
+                    <p class="text-sm text-gray-500">Edit an existing subject</p>
+                  </div>
+                </div>
+
+                <form id="editSubjectForm">
+                  <label class="block text-sm font-medium text-gray-700">Subject Code:</label>
+                  <input type="text" id="edit_subject_code" required class="input-field" readonly>
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Subject Name:</label>
+                  <input type="text" id="edit_subject_name" required class="input-field">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Year Level:</label>
+                  <select id="edit_year_level" required class="input-field">
+                    <option value="">Select a Year</option>
+                    <option value="1st year">1st year</option>
+                    <option value="2nd year">2nd year</option>
+                    <option value="3rd year">3rd year</option>
+                    <option value="4th year">4th year</option>
+                  </select>
+
+                  <label for="department" class="block text-sm font-medium text-gray-700 mt-4">Department:</label>
+                  <select id="edit_department_id" required class="input-field">
+                    <option value="">Select a Department</option>
+                  </select>
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Lecture:</label>
+                  <input type="number" id="edit_lecture" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Computer Laboratory:</label>
+                  <input type="number" id="edit_com_lab" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Laboratory:</label>
+                  <input type="number" id="edit_laboratory" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">CL:</label>
+                  <input type="number" id="edit_school_lecture" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">C:</label>
+                  <input type="number" id="edit_clinic" class="input-field" value="0">
+
+                  <label class="block text-sm font-medium text-gray-700 mt-4">Subject Type:</label>
+                  <select id="edit_subject_type" required class="input-field">
+                    <option value="">Select a Subject type</option>
+                  </select>
+
+                  <div class="mt-4 flex items-center">
+                    <input type="checkbox" id="edit_is_nstp" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="edit_is_nstp" class="ml-2 text-sm font-medium text-gray-700">Is this an NSTP subject?</label>
+                  </div>
+
+                  <button type="submit" class="mt-4 bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition">Update Subject</button>
                 </form>
               </div>
             </div>
@@ -1412,7 +1494,12 @@ async function loadSubjectsByDepartment() {
             <td class="px-3 py-2">${subject.subject_type}</td>
             <td class="px-3 py-2">${subject.is_nstp ? 'Yes' : 'No'}</td>
             <td class="px-3 py-2">
-              <button class="text-red-600 hover:underline delete-subject-btn" data-code="${subject.subject_code}">Delete</button>
+              <button class="text-blue-600 hover:underline edit-subject-btn mr-2" data-code="${subject.subject_code}">
+                <i data-lucide="pen" class="h-4 w-4"></i>
+              </button>
+              <button class="text-red-600 hover:underline delete-subject-btn" data-code="${subject.subject_code}">
+                <i data-lucide="trash-2" class="h-4 w-4"></i>
+              </button>
             </td>
           </tr>
         `;
@@ -1914,9 +2001,6 @@ function deleteUser(userId, userEmail) {
     });
   }
 }
-
-// Load users when page loads
-document.addEventListener("DOMContentLoaded", loadUsers);
 
 // Load users when the page loads
 document.addEventListener("DOMContentLoaded", loadUsers);
@@ -2928,6 +3012,116 @@ async function loadProgramsForUserEdit(user) {
   }
 }
 
+// Handle edit button clicks
+document.addEventListener('click', async function(e) {
+  const editBtn = e.target.closest('.edit-subject-btn');
+  if (!editBtn) return;
+
+  const subjectCode = editBtn.dataset.code;
+
+  try {
+    // Fetch subject data
+    const response = await fetch(`/api/subjects/${subjectCode}`);
+    const subject = await response.json();
+
+    if (!response.ok) throw new Error(subject.message || 'Failed to fetch subject');
+
+    // Populate form fields
+    document.getElementById('edit_subject_code').value = subject.subject_code;
+    document.getElementById('edit_subject_name').value = subject.subject_name;
+    document.getElementById('edit_year_level').value = subject.year_level;
+    document.getElementById('edit_lecture').value = subject.lecture;
+    document.getElementById('edit_com_lab').value = subject.com_lab;
+    document.getElementById('edit_laboratory').value = subject.laboratory;
+    document.getElementById('edit_school_lecture').value = subject.school_lecture;
+    document.getElementById('edit_clinic').value = subject.clinic;
+    document.getElementById('edit_is_nstp').checked = subject.is_nstp;
+
+    // Load departments and subject types
+    const [depts, types] = await Promise.all([
+      fetch('/get_departments_subject').then(r => r.json()),
+      fetch('/subject-types').then(r => r.json())
+    ]);
+
+    // Populate departments dropdown
+    const deptSelect = document.getElementById('edit_department_id');
+    deptSelect.innerHTML = '<option value="">Select Department</option>';
+    depts.forEach(dept => {
+      const option = new Option(dept.department, dept.id);
+      if (dept.id === subject.department_id) option.selected = true;
+      deptSelect.add(option);
+    });
+
+    // Populate subject types dropdown
+    const typeSelect = document.getElementById('edit_subject_type');
+    typeSelect.innerHTML = '<option value="">Select Subject Type</option>';
+    types.forEach(type => {
+      const option = new Option(type.name, type.id);
+      if (type.id === subject.subject_type_id) option.selected = true;
+      typeSelect.add(option);
+    });
+
+    // Show modal
+    document.getElementById('editSubjectModal').classList.remove('hidden');
+    document.getElementById('editSubjectModal').classList.add('flex');
+
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to load subject data');
+  }
+});
+// Handle edit form submission
+document.getElementById('editSubjectForm')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const formData = {
+    subject_code: document.getElementById('edit_subject_code').value,
+    subject_name: document.getElementById('edit_subject_name').value,
+    year_level: document.getElementById('edit_year_level').value,
+    department_id: document.getElementById('edit_department_id').value,
+    lecture: parseInt(document.getElementById('edit_lecture').value) || 0,
+    com_lab: parseInt(document.getElementById('edit_com_lab').value) || 0,
+    laboratory: parseInt(document.getElementById('edit_laboratory').value) || 0,
+    school_lecture: parseInt(document.getElementById('edit_school_lecture').value) || 0,
+    clinic: parseInt(document.getElementById('edit_clinic').value) || 0,
+    subject_type_id: document.getElementById('edit_subject_type').value,
+    is_nstp: document.getElementById('edit_is_nstp').checked
+  };
+
+  // Validate required fields
+  if (!formData.subject_code || !formData.subject_name || !formData.year_level ||
+      !formData.department_id || !formData.subject_type_id) {
+    return alert('Please fill all required fields');
+  }
+
+  try {
+    const response = await fetch(`/api/subjects/${formData.subject_code}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      alert('Subject updated successfully!');
+      document.getElementById('editSubjectModal').classList.add('hidden');
+      document.getElementById('editSubjectModal').classList.remove('flex');
+      loadSubjectsByDepartment(); // Refresh the table
+    } else {
+      alert(result.message || 'Error updating subject');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to update subject');
+  }
+});
+
+// Close modal
+document.getElementById('closeEditSubjectModal')?.addEventListener('click', function() {
+  document.getElementById('editSubjectModal').classList.add('hidden');
+  document.getElementById('editSubjectModal').classList.remove('flex');
+});
 
 </script>
 </body>

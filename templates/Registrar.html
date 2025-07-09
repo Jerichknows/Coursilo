@@ -20,10 +20,49 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
-  <!-- Header -->
   <header class="sticky top-0 z-10 bg-gradient-to-r from-navy to-gray-900">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-      <h1 class="text-xl font-bold text-white">Registrar Verification</h1>
+      <h1 class="text-xl font-bold text-white" id="pageTitle">Registrar Verification</h1>
+      <div class="flex items-center gap-4">
+        <!-- User Info Dropdown -->
+        <div class="relative group">
+          <button class="flex items-center gap-2 text-white">
+            <i data-lucide="user-circle" class="h-6 w-6"></i>
+            <span class="hidden md:inline" id="userEmail"></span>
+            <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-hover:rotate-180"></i>
+          </button>
+
+          <!-- Dropdown Content -->
+          <div class="absolute right-0 mt-2 w-64 origin-top-right scale-0 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 transition-all group-hover:scale-100">
+            <div class="px-4 py-2">
+              <p class="text-sm font-medium text-gray-900" id="userName"></p>
+              <p class="text-xs text-gray-500" id="userEmailDropdown"></p>
+              <!-- Role Display (shown for all users) -->
+              <p class="text-xs font-medium text-gray-700 mt-1">
+                Role: <span class="capitalize" id="userRole"></span>
+              </p>
+            </div>
+
+            <!-- Department Info (shown for dean/program-head) -->
+            <div id="departmentInfo" class="hidden border-t border-gray-100 px-4 py-2">
+              <p class="text-xs text-gray-500">Department</p>
+              <p class="text-sm font-medium text-gray-700" id="departmentName"></p>
+            </div>
+
+            <!-- Programs Info (shown only for program-head) -->
+            <div id="programsInfo" class="hidden border-t border-gray-100 px-4 py-2">
+              <p class="text-xs text-gray-500">Assigned Programs</p>
+              <ul class="text-sm text-gray-700 space-y-1" id="programsList"></ul>
+            </div>
+
+            <div class="border-t border-gray-100">
+              <button id="logoutBtn" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -40,11 +79,6 @@
               <p class="text-sm text-gray-500">Review submitted offerings. Click on the professor name for details.</p>
             </div>
           </div>
-          <a href="{{ url_for('finance') }}">
-            <button class="px-4 py-2 bg-action hover:bg-action-hover text-white rounded-md text-sm font-medium transition-colors">
-              Go to finance
-            </button>
-          </a>
           <div class="overflow-x-auto mt-4">
             <table class="w-full text-left text-sm text-gray-700">
               <thead>
@@ -436,6 +470,115 @@
       };
     }
 
+
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+      fetch('/logout')
+        .then(response => {
+          if (response.redirected) {
+            window.location.href = response.url;
+          } else {
+            alert("Logout failed.");
+          }
+        })
+        .catch(error => {
+          console.error("Logout error:", error);
+          alert("An error occurred during logout.");
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Lucide icons
+      lucide.createIcons();
+
+      // Fetch user data
+      fetch('/current_user')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.user) {
+            const user = data.user;
+
+            // Set basic user info that everyone sees
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userEmailDropdown').textContent = user.email;
+            document.getElementById('userName').textContent = `${user.first_name} ${user.last_name}`;
+
+            // Set user role - Convert to lowercase for consistency but display with proper capitalization
+            const userRole = user.user_type.toLowerCase();
+            const roleDisplayText = userRole === 'program-head' ? 'Program Head'
+                                 : userRole === 'registrar' ? 'Registrar'
+                                 : userRole === 'finance' ? 'Finance'
+                                 : userRole.charAt(0).toUpperCase() + userRole.slice(1);
+
+            document.getElementById('userRole').textContent = roleDisplayText;
+
+            // Get references to all info sections
+            const departmentInfo = document.getElementById('departmentInfo');
+            const departmentName = document.getElementById('departmentName');
+            const programsInfo = document.getElementById('programsInfo');
+            const programsList = document.getElementById('programsList');
+
+            // Clear existing programs
+            programsList.innerHTML = '';
+
+            // Role-based display logic
+            switch(userRole) {
+              case 'admin':
+                // Admin only shows email (default state)
+                departmentInfo.classList.add('hidden');
+                programsInfo.classList.add('hidden');
+                break;
+
+              case 'dean':
+                // Dean shows email and department
+                if (user.department) {
+                  departmentName.textContent = `${user.department.name} (${user.department.code})`;
+                  departmentInfo.classList.remove('hidden');
+                }
+                programsInfo.classList.add('hidden');
+                break;
+
+              case 'program-head':
+                // Program head shows email, department, and programs
+                if (user.department) {
+                  departmentName.textContent = `${user.department.name} (${user.department.code})`;
+                  departmentInfo.classList.remove('hidden');
+                }
+
+                if (user.programs && user.programs.length > 0) {
+                  user.programs.forEach(program => {
+                    const li = document.createElement('li');
+                    li.className = 'py-1';
+                    li.textContent = `${program.name} (${program.code})`;
+                    programsList.appendChild(li);
+                  });
+                  programsInfo.classList.remove('hidden');
+                }
+                break;
+
+              case 'registrar':
+              case 'finance':
+                // Registrar and Finance only show basic info
+                departmentInfo.classList.add('hidden');
+                programsInfo.classList.add('hidden');
+                break;
+
+              default:
+                // Default case (shouldn't happen)
+                departmentInfo.classList.add('hidden');
+                programsInfo.classList.add('hidden');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching user data:', error);
+          alert('Failed to load user information');
+        });
+
+      // Load other dashboard data
+      fetchSubmittedBatches();
+      fetchApprovalStatus();
+    });
   </script>
 </body>
 </html>

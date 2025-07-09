@@ -357,6 +357,65 @@ def delete_subject(subject_code):
     db.session.commit()
     return jsonify({'success': True, 'message': 'Subject deleted successfully'}), 200
 
+@app.route('/api/subjects/<string:subject_code>', methods=['GET'])
+def get_subject(subject_code):
+    subject = Subject.query.filter_by(subject_code=subject_code).first()
+    if not subject:
+        return jsonify({'success': False, 'message': 'Subject not found'}), 404
+
+    # Return a flat structure that matches your frontend expectations
+    return jsonify({
+        'success': True,
+        'subject_code': subject.subject_code,
+        'subject_name': subject.subject_name,
+        'year_level': subject.year_level,
+        'department_id': subject.department_id,
+        'lecture': subject.lecture,
+        'com_lab': subject.com_lab,
+        'laboratory': subject.laboratory,
+        'school_lecture': subject.school_lecture,
+        'clinic': subject.clinic,
+        'subject_type_id': subject.subject_type_id,
+        'is_nstp': subject.is_nstp
+    })
+
+@app.route('/api/subjects/<string:subject_code>', methods=['PUT'])
+def update_subject(subject_code):
+    data = request.get_json()
+    subject = Subject.query.filter_by(subject_code=subject_code).first()
+
+    if not subject:
+        return jsonify({'success': False, 'message': 'Subject not found'}), 404
+
+    try:
+        # Only update fields that are provided in the request
+        if 'subject_name' in data:
+            subject.subject_name = data['subject_name']
+        if 'year_level' in data:
+            subject.year_level = data['year_level']
+        if 'department_id' in data:
+            subject.department_id = data['department_id']
+        if 'lecture' in data:
+            subject.lecture = data.get('lecture', 0)
+        if 'com_lab' in data:
+            subject.com_lab = data.get('com_lab', 0)
+        if 'laboratory' in data:
+            subject.laboratory = data.get('laboratory', 0)
+        if 'school_lecture' in data:
+            subject.school_lecture = data.get('school_lecture', 0)
+        if 'clinic' in data:
+            subject.clinic = data.get('clinic', 0)
+        if 'subject_type_id' in data:
+            subject.subject_type_id = data['subject_type_id']
+        if 'is_nstp' in data:
+            subject.is_nstp = data['is_nstp']
+
+        db.session.commit()
+        log_important_action("Subject updated", f"{subject_code} - {subject.subject_name}")
+        return jsonify({'success': True, 'message': 'Subject updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
 
 @app.route('/login', methods=['GET', 'POST'])
 def show_login_page():
@@ -381,6 +440,10 @@ def show_login_page():
                 redirect_url = url_for('admin')
             elif user.user_type == 'dean':
                 redirect_url = url_for('dean')
+            elif user.user_type == 'registrar':
+                redirect_url = url_for('registrar')
+            elif user.user_type == 'finance':
+                redirect_url = url_for('finance')
             else:
                 return jsonify({"success": False, "message": "Unknown role"}), 400
 
@@ -1002,6 +1065,104 @@ def delete_batch(batch_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+@app.route('/update_subject_in_batch/<int:batch_id>/<int:subject_id>', methods=['PUT'])
+def update_subject_in_batch(batch_id, subject_id):
+    try:
+                # Verify both IDs exist
+        if not batch_id or not subject_id:
+            return jsonify({'success': False, 'message': 'Missing batch or subject ID'}), 400
+            
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+        # Get the current user
+        current_user = db.session.get(User, session['user_id'])
+        if not current_user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Get the teaching load
+        teaching_load = db.session.get(TeachingLoad, batch_id)
+        if not teaching_load:
+            return jsonify({'success': False, 'message': 'Batch not found'}), 404
+
+        # Check if batch is already submitted
+        if teaching_load.status == 'submitted':
+            return jsonify({'success': False, 'message': 'Cannot edit subjects in a submitted batch'}), 400
+
+        # Check if user has permission to edit this batch
+        if teaching_load.submitted_by != current_user.id:
+            # For deans and program heads, check if they have access to this batch
+            user_role = current_user.user_type.lower()
+            if user_role == 'dean':
+                if teaching_load.department_id != current_user.department_id:
+                    return jsonify({'success': False, 'message': 'Unauthorized to edit this batch'}), 403
+            elif user_role == 'program-head':
+                if str(teaching_load.program_id) not in (current_user.programs or '').split(','):
+                    return jsonify({'success': False, 'message': 'Unauthorized to edit this batch'}), 403
+            else:
+                return jsonify({'success': False, 'message': 'Unauthorized to edit this batch'}), 403
+
+        # Get the subject in the batch
+        batch_subject = db.session.query(TeachingLoadSubject).filter_by(
+            teaching_load_id=batch_id,
+            subject_id=subject_id
+        ).first()
+
+        if not batch_subject:
+            return jsonify({'success': False, 'message': 'Subject not found in this batch'}), 404
+
+        # Get the request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Validate the input data
+        required_fields = ['lecture', 'com_lab', 'laboratory', 'school_lecture', 'clinic', 'total_units']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'success': False, 'message': f'Missing required field: {field}'}), 400
+
+            try:
+                value = float(data[field])
+                if value < 0:
+                    return jsonify({'success': False, 'message': f'{field} must be a positive number'}), 400
+            except ValueError:
+                return jsonify({'success': False, 'message': f'{field} must be a number'}), 400
+
+        # Update the subject details
+        batch_subject.lecture_hours = data['lecture']
+        batch_subject.com_lab_hours = data['com_lab']
+        batch_subject.laboratory_hours = data['laboratory']
+        batch_subject.school_lecture_hours = data['school_lecture']
+        batch_subject.clinic_hours = data['clinic']
+        batch_subject.total_units = data['total_units']
+
+        # Update the modified timestamp
+        batch_subject.modified_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Subject updated successfully',
+            'subject': {
+                'subject_code': batch_subject.subject.subject_code,
+                'subject_name': batch_subject.subject.subject_name,
+                'total_units': batch_subject.total_units,
+                'lecture': batch_subject.lecture_hours,
+                'com_lab': batch_subject.com_lab_hours,
+                'laboratory': batch_subject.laboratory_hours,
+                'school_lecture': batch_subject.school_lecture_hours,
+                'clinic': batch_subject.clinic_hours,
+                'subject_type': batch_subject.subject.subject_type.name if batch_subject.subject.subject_type else 'N/A'
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating subject in batch: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to update subject: {str(e)}'}), 500
 
 @app.route('/submit_batch/<int:batch_id>', methods=['POST'])
 def submit_batch(batch_id):
