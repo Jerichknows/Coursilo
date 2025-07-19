@@ -354,9 +354,6 @@
       </div>
   </main>
 <script>
-
-
-// Update the save button handler to allow multiple saves
 document.getElementById('saveButton').addEventListener('click', async function() {
   if (selectedSubjects.length === 0) {
     alert('Please select at least one subject before saving');
@@ -365,6 +362,7 @@ document.getElementById('saveButton').addEventListener('click', async function()
 
   const yearSemesterId = document.getElementById('yearSemesterSelect').value;
   const programId = document.getElementById('programSelect').value;
+  const yearLevel = document.getElementById('yearLevelSelect').value;
 
   if (!yearSemesterId || !programId) {
     alert('Please select both year/semester and program before saving');
@@ -402,20 +400,37 @@ document.getElementById('saveButton').addEventListener('click', async function()
     const result = await response.json();
 
     if (result.success) {
-        showNotification('Subjects saved successfully!');
+      showNotification('Subjects saved successfully!');
 
-        // Clear selected subjects
-        selectedSubjects = [];
+      // Clear selected subjects
+      selectedSubjects = [];
 
-        document.getElementById('programSelect').innerHTML = '<option value="">Select Program</option>';
-        document.getElementById('yearLevelSelect').innerHTML = '<option value="">Select Year Level</option>';
-        document.getElementById('subjectSelect').innerHTML = '<option value="">Select Subject</option>';
+      // Keep the current selections
+      const currentYearSemester = document.getElementById('yearSemesterSelect').value;
+      const currentProgram = document.getElementById('programSelect').value;
+      const currentYearLevel = document.getElementById('yearLevelSelect').value;
 
-        // Update the table and summary
-        updateSelectedSubjectsTable();
-        loadSavedBatches();
+      // Reset form fields but preserve the selections
+      document.getElementById('yearSemesterSelect').value = currentYearSemester;
+      document.getElementById('programSelect').value = currentProgram;
+
+      // Only reset year level if it was changed
+      if (yearLevel !== currentYearLevel) {
+        document.getElementById('yearLevelSelect').value = currentYearLevel;
+      }
+
+      // Reload subjects for the current selections
+      if (currentYearLevel && currentProgram && currentYearSemester) {
+        await loadSubjects(currentYearSemester, currentProgram, currentYearLevel);
+      }
+
+      // Update the table and summary
+      updateSelectedSubjectsTable();
+      updateSummary();
+      loadSavedBatches();
+
     } else {
-        alert('Failed to save: ' + (result.message || 'Unknown error'));
+      alert('Failed to save: ' + (result.message || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error:', error);

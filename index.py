@@ -1971,6 +1971,182 @@ def delete_user(id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        # Get department info if applicable
+        department_info = None
+        if user.department_id and user.user_type.lower() in ['dean', 'program-head']:
+            department = Department.query.get(user.department_id)
+            if department:
+                department_info = {
+                    'id': department.id,
+                    'name': department.department,
+                    'code': department.department_code
+                }
+
+        # Get assigned programs if program-head
+        program_details = []
+        if user.user_type.lower() == 'program-head' and user.programs:
+            program_ids = [int(id) for id in user.programs.split(',') if id.strip()]
+            programs = Program.query.filter(Program.id.in_(program_ids)).all()
+            program_details = [{
+                'id': program.id,
+                'code': program.program_code,
+                'name': program.program_name
+            } for program in programs]
+
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "user_type": user.user_type,
+                "is_active": user.is_active,
+                "department_id": user.department_id,
+                "department": department_info,
+                "programs": program_details
+            }
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error fetching user {user_id}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error fetching user data",
+            "error": str(e)
+        }), 500
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    try:
+        data = request.get_json()
+        user = db.session.get(User, user_id)
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        # Prevent modifying default admin
+        if user.email == 'admin.admin@gmail.com' and 'user_type' in data:
+            return jsonify({
+                "success": False,
+                "message": "Cannot modify default admin account"
+            }), 403
+
+        # Update basic fields
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+        if 'email' in data:
+            user.email = data['email']
+        if 'user_type' in data:
+            user.user_type = data['user_type']
+        if 'is_active' in data:
+            user.is_active = data['is_active'] == 'true' or data['is_active'] is True
+
+        # Handle department assignment for deans/program-heads
+        if 'department_id' in data and user.user_type.lower() in ['dean', 'program-head']:
+            user.department_id = data['department_id']
+
+        # Handle program assignments for program-heads
+        if 'programs' in data and user.user_type.lower() == 'program-head':
+            user.programs = data['programs']
+
+        db.session.commit()
+
+        log_important_action("User updated", f"ID: {user_id} - {user.email}")
+        return jsonify({
+            "success": True,
+            "message": "User updated successfully",
+            "user": user.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating user {user_id}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error updating user",
+            "error": str(e)
+        }), 500
+
+@app.route('/api/departments', methods=['GET'], endpoint='api_get_departments')
+def get_departments():
+    try:
+        departments = db.session.query(Department).all()
+        return jsonify({
+            "success": True,
+            "departments": [department.to_dict() for department in departments]
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching departments: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error fetching departments",
+            "error": str(e)
+        }), 500
+
+@app.route('/api/programs', methods=['GET'], endpoint='api_get_programs')
+def get_programs():
+    try:
+        programs = db.session.query(Program).all()
+        return jsonify({
+            "success": True,
+            "programs": [program.to_dict() for program in programs]
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching programs: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error fetching programs",
+            "error": str(e)
+        }), 500
+
+@app.route('/api/users/<int:user_id>/programs', methods=['GET'], endpoint='api_get_user_programs')
+def get_user_programs(user_id):
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        if not user.programs:
+            return jsonify({
+                "success": True,
+                "programs": []
+            })
+
+        program_ids = [int(id) for id in user.programs.split(',') if id.strip()]
+        programs = db.session.query(Program).filter(Program.id.in_(program_ids)).all()
+
+        return jsonify({
+            "success": True,
+            "programs": [program.to_dict() for program in programs]
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching user programs: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error fetching user programs",
+            "error": str(e)
+        }), 500
+
+
 with app.app_context():
     db.create_all()
     create_default_admin()  # Add this line to create default admin

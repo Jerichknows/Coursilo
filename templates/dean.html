@@ -363,7 +363,6 @@
       </div>
   </main>
 <script>
-
 document.getElementById('saveButton').addEventListener('click', async function() {
   if (selectedSubjects.length === 0) {
     alert('Please select at least one subject before saving');
@@ -388,6 +387,12 @@ document.getElementById('saveButton').addEventListener('click', async function()
     const isDean = userData.user.user_type.toLowerCase() === 'dean';
     const isProgramHead = userData.user.user_type.toLowerCase() === 'program-head';
 
+    // Store current selections before saving
+    const currentYearSemester = document.getElementById('yearSemesterSelect').value;
+    const currentDepartment = isDean ? document.getElementById('departmentSelect').value : null;
+    const currentProgram = isProgramHead ? document.getElementById('programSelect').value : null;
+    const currentYearLevel = document.getElementById('yearLevelSelect').value;
+
     // Prepare data
     const data = {
       year_semester_id: yearSemesterId,
@@ -408,19 +413,17 @@ document.getElementById('saveButton').addEventListener('click', async function()
 
     // Add department_id or program_id based on role
     if (isDean) {
-      const departmentId = document.getElementById('departmentSelect').value;
-      if (!departmentId) {
+      if (!currentDepartment) {
         alert('Please select department before saving');
         return;
       }
-      data.department_id = departmentId;
+      data.department_id = currentDepartment;
     } else if (isProgramHead) {
-      const programId = document.getElementById('programSelect').value;
-      if (!programId) {
+      if (!currentProgram) {
         alert('Please select program before saving');
         return;
       }
-      data.program_id = programId;
+      data.program_id = currentProgram;
     } else {
       alert('Unauthorized user role');
       return;
@@ -442,20 +445,43 @@ document.getElementById('saveButton').addEventListener('click', async function()
     }
 
     if (result.success) {
-        showNotification('Subjects saved successfully!');
+      showNotification('Subjects saved successfully!');
 
-        // Clear selected subjects
-        selectedSubjects = [];
+      // Clear selected subjects but preserve all selections
+      selectedSubjects = [];
 
-        // Reset year level and subject selections
-        document.getElementById('yearLevelSelect').innerHTML = '<option value="">Select Year Level</option>';
-        document.getElementById('subjectSelect').innerHTML = '<option value="">Select Subject</option>';
+      // Restore the selections
+      document.getElementById('yearSemesterSelect').value = currentYearSemester;
 
-        // Update the table and summary
-        updateSelectedSubjectsTable();
-        loadSavedBatches();
+      if (isDean) {
+        document.getElementById('departmentSelect').value = currentDepartment;
+      } else if (isProgramHead) {
+        document.getElementById('programSelect').value = currentProgram;
+      }
+
+      // Only reset year level if it was changed
+      if (currentYearLevel !== document.getElementById('yearLevelSelect').value) {
+        document.getElementById('yearLevelSelect').value = currentYearLevel;
+      }
+
+      // Reload subjects if we have all required selections
+      if (currentYearLevel && (currentDepartment || currentProgram) && currentYearSemester) {
+        if (isDean) {
+          await loadYearLevelsByDepartment(currentDepartment);
+          await loadSubjects(currentYearSemester, null, currentYearLevel);
+        } else if (isProgramHead) {
+          await loadYearLevelsByDepartment(userData.user.department.id);
+          await loadSubjects(currentYearSemester, currentProgram, currentYearLevel);
+        }
+      }
+
+      // Update the table and summary
+      updateSelectedSubjectsTable();
+      updateSummary();
+      loadSavedBatches();
+
     } else {
-        alert('Failed to save: ' + (result.message || 'Unknown error'));
+      alert('Failed to save: ' + (result.message || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error:', error);
@@ -771,252 +797,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // View payment details
-    function viewPaymentDetails(batchId) {
-      fetch(`/get_assigned_payment_details/${batchId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            const modal = document.getElementById('paymentDetailsModal');
-            const content = document.getElementById('paymentDetailsContent');
-
-            // Extract the payment details
-            const payment = data.payment_details;
-            const scheme = payment.payment_scheme;
-            const plan = payment.payment_plan;
-            const subjects = payment.subjects;
-
-            // Calculate totals from subjects
-            let totalComLabUnits = 0;
-            let totalLabUnits = 0;
-            let totalCLUnits = 0;
-            let totalCUnits = 0;
-            let tuitionUnits = 0;
-            let nstpUnits = 0;
-            let totalUnits = 0;
-
-            // Create subject details table
-            let subjectTableHTML = `
-              <h3 class="text-lg font-semibold mb-4">Subject Details</h3>
-              <table class="w-full text-sm border mb-6">
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th class="p-2 border text-left">Code</th>
-                    <th class="p-2 border text-left">Name</th>
-                    <th class="p-2 border text-center">Units</th>
-                    <th class="p-2 border text-center">Lec</th>
-                    <th class="p-2 border text-center">CLab</th>
-                    <th class="p-2 border text-center">Lab</th>
-                    <th class="p-2 border text-center">SL</th>
-                    <th class="p-2 border text-center">C</th>
-                    <th class="p-2 border text-center">Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-            `;
-
-            subjects.forEach(subj => {
-              totalComLabUnits += subj.com_lab || 0;
-              totalLabUnits += subj.laboratory || 0;
-              totalCLUnits += subj.school_lecture || 0;
-              totalCUnits += subj.clinic || 0;
-              totalUnits += subj.total_units || 0;
-
-              if (subj.is_nstp) {
-                nstpUnits += subj.total_units || 0;
-              } else {
-                tuitionUnits += subj.total_units || 0;
-              }
-
-              subjectTableHTML += `
-                <tr class="border-b">
-                  <td class="p-2 border">${subj.subject_code}</td>
-                  <td class="p-2 border">${subj.subject_name}</td>
-                  <td class="p-2 border text-center">${subj.total_units}</td>
-                  <td class="p-2 border text-center">${subj.lecture}</td>
-                  <td class="p-2 border text-center">${subj.com_lab}</td>
-                  <td class="p-2 border text-center">${subj.laboratory}</td>
-                  <td class="p-2 border text-center">${subj.school_lecture}</td>
-                  <td class="p-2 border text-center">${subj.clinic}</td>
-                  <td class="p-2 border text-center">${subj.subject_type} ${subj.is_nstp ? '(NSTP)' : ''}</td>
-                </tr>
-              `;
-            });
-
-            subjectTableHTML += `
-                  <tr class="bg-gray-100 font-medium">
-                    <td colspan="2" class="p-2 border text-right">Total</td>
-                    <td class="p-2 border text-center">${totalUnits}</td>
-                    <td class="p-2 border text-center"></td>
-                    <td class="p-2 border text-center">${totalComLabUnits}</td>
-                    <td class="p-2 border text-center">${totalLabUnits}</td>
-                    <td class="p-2 border text-center">${totalCLUnits}</td>
-                    <td class="p-2 border text-center">${totalCUnits}</td>
-                    <td class="p-2 border text-center"></td>
-                  </tr>
-                </tbody>
-              </table>
-            `;
-
-            // Calculate fees based on scheme
-            const regularTotal = parseFloat(scheme.regular_fees) || 0;
-            const miscTotal = parseFloat(scheme.misc_fees) || 0;
-            const affTotal = parseFloat(scheme.aff_fee) || 0;
-
-            const totalComLabFee = totalComLabUnits * (parseFloat(scheme.com_lab_fee) || 0);
-            const totalLabFee = totalLabUnits * (parseFloat(scheme.laboratory_fee) || 0);
-            const totalCLFee = totalCLUnits * (parseFloat(scheme.school_lecture_fee) || 0);
-            const totalCFee = totalCUnits * (parseFloat(scheme.clinic_fee) || 0);
-            const totalTuitionFee = tuitionUnits * (parseFloat(scheme.tuition_fee) || 0);
-            const totalNSTPFee = nstpUnits * (parseFloat(scheme.unit_fee) || 0);
-
-            const subtotal = regularTotal + miscTotal + totalComLabFee + totalLabFee +
-                             totalCLFee + totalCFee + affTotal + totalTuitionFee + totalNSTPFee;
-
-            // Calculate payment plan breakdown
-            let breakdownHTML = '';
-            let totalToPay = subtotal;
-
-            switch (plan) {
-              case 'cash':
-                const discount = subtotal * 0.05;
-                totalToPay = subtotal - discount;
-                breakdownHTML = `
-                  <div class="space-y-2">
-                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between text-green-600"><span>5% Discount:</span><span>-₱${discount.toFixed(2)}</span></div>
-                    <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
-                  </div>
-                `;
-                break;
-
-              case 'planA':
-                const downpaymentA = 500;
-                const remainingA = subtotal - downpaymentA;
-                totalToPay = subtotal;
-                breakdownHTML = `
-                  <div class="space-y-2">
-                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Downpayment:</span><span>₱${downpaymentA.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingA.toFixed(2)}</span></div>
-                    <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total Amount Due:</span><span>₱${totalToPay.toFixed(2)}</span></div>
-                  </div>
-                `;
-                break;
-
-              case 'planB':
-                const downpaymentB = regularTotal + miscTotal;
-                const remainingB = subtotal - downpaymentB;
-                const monthlyB = remainingB / 4;
-                totalToPay = subtotal;
-                breakdownHTML = `
-                  <div class="space-y-2">
-                    <div class="flex justify-between"><span>Subtotal:</span><span>₱${subtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Registration Fees:</span><span>₱${regularTotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Miscellaneous Fees:</span><span>₱${miscTotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between font-semibold"><span>Downpayment (Reg + Misc):</span><span>₱${downpaymentB.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Remaining Balance:</span><span>₱${remainingB.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>4 Monthly Payments:</span><span>₱${monthlyB.toFixed(2)} each</span></div>
-                  </div>
-                `;
-                break;
-            }
-
-            content.innerHTML = `
-              ${subjectTableHTML}
-              <div class="flex flex-col md:flex-row gap-6 mb-6">
-                <!-- Left Column - Fees Breakdown -->
-                <div class="flex-1 space-y-4">
-                  <div class="border rounded p-4">
-                    <h3 class="font-semibold mb-3 text-center">Payment Scheme: ${scheme.payment_name}</h3>
-                    <p class="text-sm text-gray-600 text-center mb-4">Plan: ${plan.toUpperCase()}</p>
-
-                    <h4 class="font-medium mb-2">Fixed Fees</h4>
-                    <table class="w-full mb-4">
-                      <tr>
-                        <td class="py-1">Registration Fees:</td>
-                        <td class="py-1 text-right">₱${regularTotal.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">Miscellaneous Fees:</td>
-                        <td class="py-1 text-right">₱${miscTotal.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">Affiliation Fee:</td>
-                        <td class="py-1 text-right">₱${affTotal.toFixed(2)}</td>
-                      </tr>
-                    </table>
-
-                    <h4 class="font-medium mb-2">Calculated Fees</h4>
-                    <table class="w-full">
-                      <tr>
-                        <td class="py-1">Computer Lab (${totalComLabUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalComLabFee.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">Laboratory (${totalLabUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalLabFee.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">CL Fees (${totalCLUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalCLFee.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">Clinic (${totalCUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalCFee.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td class="py-1">Tuition (${tuitionUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalTuitionFee.toFixed(2)}</td>
-                      </tr>
-                      ${nstpUnits > 0 ? `
-                      <tr>
-                        <td class="py-1">NSTP (${nstpUnits} units):</td>
-                        <td class="py-1 text-right">₱${totalNSTPFee.toFixed(2)}</td>
-                      </tr>
-                      ` : ''}
-                    </table>
-                  </div>
-                </div>
-
-                <!-- Right Column - Payment Plan -->
-                <div class="flex-1">
-                  <div class="border rounded p-4 bg-gray-50 h-full">
-                    <h3 class="font-semibold mb-3 text-center">Payment Plan</h3>
-                    ${breakdownHTML}
-                  </div>
-                </div>
-              </div>
-
-              <div class="text-xs text-gray-500">
-                <p>Assigned on: ${new Date(payment.assigned_at).toLocaleString()}</p>
-                <p>Assigned by: ${payment.assigned_by}</p>
-              </div>
-            `;
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-          } else {
-            alert('Failed to load payment details');
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching payment details:', error);
-          alert('Error loading payment details');
-        });
-    }
-
-    // Close modal function
-    function closePaymentDetailsModal() {
-      const modal = document.getElementById('paymentDetailsModal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
-
-    // Initialize on page load
-    document.addEventListener("DOMContentLoaded", () => {
-      fetchAssignedPayments();
-    });
 
 
 </script>
